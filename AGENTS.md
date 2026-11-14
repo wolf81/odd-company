@@ -47,6 +47,7 @@ An Undertale-inspired Roblox game, built together with a young co-designer (the 
 - Setup on a new machine: `winget install Rojo.Rokit`, then `rokit install` in the repo (installs the pinned Rojo), then `rojo plugin install` (Studio plugin). Recommended VS Code extensions are in `.vscode/extensions.json`.
 - Check the project before handing off: `rojo build -o build/test.rbxl` must succeed. For luau-lsp type info, run `rojo sourcemap -o sourcemap.json` (git-ignored).
 - Develop: run `rojo serve`, then connect from the Rojo plugin in Studio. Edit code in the repo, never in Studio, or Rojo will overwrite it.
-- Room geometry is built by hand in Studio, then saved back as `.rbxm` into `assets/rooms/` (right-click → Save to File) so it's versioned.
+- Placeholder rooms are **built from code**: a layout table per room in `src/shared/Rooms/` (e.g. `Room1.luau`, typed by `RoomTypes.luau`), turned into Parts at runtime by `src/server/RoomBuilder.luau`. North is -Z (screen top), south is +Z. Rooms therefore only appear during Play, not in edit mode.
+- Later, hand-built rooms (e.g. with the nephew's art) can be made in Studio and saved as `.rbxm` into `assets/rooms/` (right-click → Save to File) so they're versioned too.
 - Tool versions are pinned in `rokit.toml`. Don't commit `.rbxl` place files or editor clutter.
 - Before saying a step is done, check it actually runs in Studio (Play test). Static review of Luau isn't enough.

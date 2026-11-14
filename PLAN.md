@@ -14,6 +14,7 @@ Source material lives in `design/`:
 - [x] Step 0 tooling: Rokit, Rojo 7.7.1, Studio plugin, `default.project.json`, git repo
 - [x] Step 0 check: `rojo serve` → connect in Studio → Play shows the `client running` / `server running` messages in Output (local place: `odd-company.rbxl`, git-ignored; old leftover scripts removed)
 - [ ] Step 0 remaining: publish to Roblox, set Avatar type to Player Choice, give the nephew access
+- [x] Step 1: room 1 from code (`src/shared/Rooms/Room1.luau`), own avatar spawns in it, no jumping, locked top-down camera with scroll/pinch zoom (`src/client/TopDownCamera.luau`)
 
 ## MVP scope
 
