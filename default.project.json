@@ -1,0 +1,29 @@
+{
+  "name": "odd-company",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Modules": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Workspace": {
+      "Rooms": {
+        "$path": "assets/rooms",
+        "$ignoreUnknownInstances": true
+      }
+    }
+  }
+}
