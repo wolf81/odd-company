@@ -5,6 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RoomTypes = require(ReplicatedStorage.Modules.Rooms.RoomTypes)
+local Placement = require(script.Parent.Placement)
 
 local FLOOR_THICKNESS = 1
 
@@ -110,10 +111,9 @@ end
 -- facing north. Works for any avatar size (R6 or R15).
 function RoomBuilder.placeCharacter(room: Model, character: Model)
 	local spawnMarker = room:FindFirstChild("Spawn") :: BasePart
-	local height = character:GetExtentsSize().Y
-	local floorY = spawnMarker.Position.Y
-	local position = Vector3.new(spawnMarker.Position.X, floorY + height / 2 + 0.5, spawnMarker.Position.Z)
-	character:PivotTo(CFrame.lookAt(position, position + Vector3.new(0, 0, -1)))
+	-- The marker's centre is at floor height; lift 0.2 so the avatar
+	-- drops onto the floor rather than starting inside it.
+	Placement.standOnFloor(character, spawnMarker.Position, Vector3.new(0, 0, -1), 0.2)
 end
 
 return RoomBuilder

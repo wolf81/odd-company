@@ -8,6 +8,11 @@ export type DoorLayout = {
 	Width: number,
 }
 
+export type EnemyPlacement = {
+	Id: string, -- key in ReplicatedStorage.Modules.Enemies
+	Offset: Vector3, -- from the room centre, on the floor
+}
+
 export type RoomLayout = {
 	Name: string,
 	Center: Vector3,
@@ -19,6 +24,7 @@ export type RoomLayout = {
 	DoorColor: Color3,
 	SpawnOffset: Vector3,
 	Doors: { DoorLayout },
+	Enemies: { EnemyPlacement },
 }
 
 return {}

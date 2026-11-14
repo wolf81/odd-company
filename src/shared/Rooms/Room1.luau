@@ -21,6 +21,10 @@ local room: RoomTypes.RoomLayout = {
 		-- 8 studs wide so even the biggest avatars fit.
 		{ Wall = "North", Width = 8 },
 	},
+	Enemies = {
+		-- In the north half, between the player's spawn and the door.
+		{ Id = "Noob", Offset = Vector3.new(0, 0, -6) },
+	},
 }
 
 return room

@@ -20,6 +20,13 @@ local Config = {
 
 	-- Undertale-style movement: walking only, no jumping.
 	AllowJumping = false,
+
+	-- Enemies: how far (studs) around an enemy touching starts a battle.
+	EncounterTriggerPadding = 1.5,
+	-- Seconds before the same enemy can start a battle again.
+	EncounterCooldown = 3,
+	-- CollectionService tag on the invisible box around each enemy.
+	EnemyTriggerTag = "EnemyTrigger",
 }
 
 return Config

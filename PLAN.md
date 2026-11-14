@@ -15,6 +15,7 @@ Source material lives in `design/`:
 - [x] Step 0 check: `rojo serve` → connect in Studio → Play shows the `client running` / `server running` messages in Output (local place: `odd-company.rbxl`, git-ignored; old leftover scripts removed)
 - [ ] Step 0 remaining: publish to Roblox, set Avatar type to Player Choice, give the nephew access
 - [x] Step 1: room 1 from code (`src/shared/Rooms/Room1.luau`), own avatar spawns in it, no jumping, locked top-down camera with scroll/pinch zoom (`src/client/TopDownCamera.luau`)
+- [x] Step 2: Noob enemy (`src/shared/Enemies/Noob.luau`) built by `EnemyBuilder`, touching it shows a temporary "battle starts" banner (`src/client/EncounterTrigger.luau`)
 
 ## MVP scope
 
