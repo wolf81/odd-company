@@ -8,13 +8,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Modules.Config)
 local EnemyTypes = require(ReplicatedStorage.Modules.Enemies.EnemyTypes)
-local Placement = require(script.Parent.Placement)
+local Placement = require(ReplicatedStorage.Modules.Placement)
 
 local EnemyBuilder = {}
 
 local function buildDescription(data: EnemyTypes.EnemyData): HumanoidDescription
 	local description = Instance.new("HumanoidDescription")
-	for property, value in data.Description do
+	for property, value in data.Avatar do
 		local ok, err = pcall(function()
 			(description :: any)[property] = value
 		end)

@@ -13,9 +13,14 @@ Source material lives in `design/`:
 - [ ] Open questions answered (see bottom)
 - [x] Step 0 tooling: Rokit, Rojo 7.7.1, Studio plugin, `default.project.json`, git repo
 - [x] Step 0 check: `rojo serve` → connect in Studio → Play shows the `client running` / `server running` messages in Output (local place: `odd-company.rbxl`, git-ignored; old leftover scripts removed)
-- [ ] Step 0 remaining: publish to Roblox, set Avatar type to Player Choice, give the nephew access
+- [ ] Step 0 remaining: publish to Roblox (published, but shows "Unavailable" — investigate: questionnaire/rating, account restrictions, devices), set Avatar type to Player Choice, give the nephew access
 - [x] Step 1: room 1 from code (`src/shared/Rooms/Room1.luau`), own avatar spawns in it, no jumping, locked top-down camera with scroll/pinch zoom (`src/client/TopDownCamera.luau`)
 - [x] Step 2: Noob enemy (`src/shared/Enemies/Noob.luau`) built by `EnemyBuilder`, touching it shows a temporary "battle starts" banner (`src/client/EncounterTrigger.luau`)
+- [x] Steps 3–5:
+  - Step 3: touching the Noob freezes the player and fades to a dark client-side arena with the Noob and battle UI layout A (`src/client/Battle/`); reversed on exit
+  - Step 4: shared state machine `src/shared/Battle/BattleLogic.luau` (PlayerTurn → ResolveAction → CheckEnd → EnemyTurn → CheckEnd → Win/Lose), UI only via hooks; damage formula already in `Damage.luau`. Win removes the enemy (this session, this client); lose returns you to the room spawn
+  - Step 5: ATTACK / ACT menu (`BattleMenu.luau`) with mouse, touch, keyboard (arrows/WASD, Z/Enter/Space, X/Backspace) and gamepad; ACT lists Check + the enemy's own acts
+  - Placeholders until steps 6–7: attacks always hit ×1; enemies always hit for ATK − DEF
 
 ## MVP scope
 

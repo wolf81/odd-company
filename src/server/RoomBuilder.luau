@@ -5,7 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RoomTypes = require(ReplicatedStorage.Modules.Rooms.RoomTypes)
-local Placement = require(script.Parent.Placement)
+local Placement = require(ReplicatedStorage.Modules.Placement)
 
 local FLOOR_THICKNESS = 1
 

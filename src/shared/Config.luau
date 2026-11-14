@@ -27,6 +27,18 @@ local Config = {
 	EncounterCooldown = 3,
 	-- CollectionService tag on the invisible box around each enemy.
 	EnemyTriggerTag = "EnemyTrigger",
+
+	-- Battle scene: a dark arena built on the client, far from the rooms.
+	BattleArenaPosition = Vector3.new(0, 500, 0),
+	BattleCameraDistance = 16, -- studs in front of the enemy
+	BattleCameraFieldOfView = 45,
+	BattleFadeTime = 0.25, -- seconds for the fade to/from black
+	-- After leaving a battle the player is pushed this far from the enemy,
+	-- so they don't bump straight into it again.
+	BattleExitPushback = 5,
+
+	-- Player stats. Damage = max(1, ATK - DEF) x timing multiplier.
+	PlayerStats = { HP = 20, ATK = 6, DEF = 0 },
 }
 
 return Config

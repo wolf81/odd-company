@@ -11,8 +11,20 @@ local GREEN = Color3.fromRGB(164, 189, 71) -- "Br. yellowish green"
 local noob: EnemyTypes.EnemyData = {
 	Id = "Noob",
 	DisplayName = "Noob",
+	Description = "Joined today. Still figuring out the controls.",
+	FlavorText = {
+		"* Noob blocks the way!",
+		"* Noob is trying to jump. Nothing happens.",
+		"* Noob looks at you hopefully.",
+		"* Smells like a brand new account.",
+	},
+	AttackText = "* Noob throws a wobbly block at you!",
+	Acts = {
+		{ Name = "Wave", Message = "* You wave at Noob.\n* Noob waves back... with the wrong arm." },
+		{ Name = "Teach", Message = "* You show Noob how to walk properly.\n* Noob seems grateful." },
+	},
 	RigType = Enum.HumanoidRigType.R6,
-	Description = {
+	Avatar = {
 		HeadColor = YELLOW,
 		LeftArmColor = YELLOW,
 		RightArmColor = YELLOW,
