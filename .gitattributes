@@ -1,0 +1,5 @@
+# Keep Unix line endings everywhere (scripts break with CRLF).
+* text=auto eol=lf
+*.pdf binary
+*.rbxm binary
+*.rbxl binary
