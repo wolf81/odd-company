@@ -20,7 +20,9 @@ Source material lives in `design/`:
   - Step 3: touching the Noob freezes the player and fades to a dark client-side arena with the Noob and battle UI layout A (`src/client/Battle/`); reversed on exit
   - Step 4: shared state machine `src/shared/Battle/BattleLogic.luau` (PlayerTurn → ResolveAction → CheckEnd → EnemyTurn → CheckEnd → Win/Lose), UI only via hooks; damage formula already in `Damage.luau`. Win removes the enemy (this session, this client); lose returns you to the room spawn
   - Step 5: ATTACK / ACT menu (`BattleMenu.luau`) with mouse, touch, keyboard (arrows/WASD, Z/Enter/Space, X/Backspace) and gamepad; ACT lists Check + the enemy's own acts
-  - Placeholders until steps 6–7: attacks always hit ×1; enemies always hit for ATK − DEF
+- [x] Steps 6–7:
+  - Step 6: timing bar in the dialogue box (`playerAttack` hook in `src/client/Battle/init.luau`): centre = ×1.6, edges = ×0.4, no press = miss; enemy flashes red, shakes, shows the damage number, fades out when defeated (`BattleArena.showHit`)
+  - Step 7: heart-in-a-box dodge phase (`DodgeBox.luau`) with keyboard, gamepad and touch-drag movement, 1 s invincibility after a hit, HP drops live; Noob has three patterns used in turn order (`Patterns.luau`: FallingBlocks, SideBlocks, BlockRows)
 
 ## MVP scope
 

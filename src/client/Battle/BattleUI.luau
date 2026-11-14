@@ -25,6 +25,8 @@ type Ui = {
 	box: Frame,
 	message: TextLabel,
 	options: Frame,
+	overlay: Frame, -- attack bar goes here
+	dodge: Frame, -- the dodge box (step 7), hidden until the enemy's turn
 	hpFill: Frame,
 	hpText: TextLabel,
 	commands: { TextButton },
@@ -125,6 +127,29 @@ local function build(): Ui
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.Parent = options
 
+	-- Overlay inside the dialogue box for the attack timing bar.
+	local overlay = Instance.new("Frame")
+	overlay.Name = "Overlay"
+	overlay.BackgroundTransparency = 1
+	overlay.Size = UDim2.fromScale(1, 1)
+	overlay.Parent = box
+
+	-- Square dodge box, shown in place of the dialogue box during the
+	-- enemy's turn. Its bottom lines up with the dialogue box's bottom.
+	local dodge = Instance.new("Frame")
+	dodge.Name = "DodgeBox"
+	dodge.AnchorPoint = Vector2.new(0.5, 1)
+	dodge.Position = UDim2.new(0.5, 0, 1, -152)
+	dodge.BackgroundColor3 = BLACK
+	dodge.ClipsDescendants = true
+	dodge.Visible = false
+	dodge.Parent = gui
+	local dodgeStroke = Instance.new("UIStroke")
+	dodgeStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	dodgeStroke.Color = WHITE
+	dodgeStroke.Thickness = 4
+	dodgeStroke.Parent = dodge
+
 	-- Player row: headshot, name, HP bar, HP numbers.
 	local row = Instance.new("Frame")
 	row.Name = "PlayerRow"
@@ -201,6 +226,8 @@ local function build(): Ui
 		box = box,
 		message = message,
 		options = options,
+		overlay = overlay,
+		dodge = dodge,
 		hpFill = hpFill,
 		hpText = hpText,
 		commands = commands,
@@ -276,8 +303,83 @@ function BattleUI.clearOptions()
 			child:Destroy()
 		end
 	end
+	u.overlay:ClearAllChildren()
 	u.options.Visible = false
 	u.message.Visible = true
+end
+
+-- Shows the attack timing bar in the dialogue box. Returns the bar and the
+-- cursor; move the cursor with Position.X.Scale from 0 (left) to 1 (right).
+function BattleUI.showAttackBar(): (Frame, Frame)
+	local u = getUi()
+	BattleUI.clearOptions()
+	u.message.Visible = false
+
+	local bar = Instance.new("Frame")
+	bar.Name = "AttackBar"
+	bar.AnchorPoint = Vector2.new(0.5, 0.5)
+	bar.Position = UDim2.fromScale(0.5, 0.5)
+	bar.Size = UDim2.new(1, 0, 0, 64)
+	bar.BackgroundColor3 = WHITE
+	bar.BorderSizePixel = 0
+	bar.Parent = u.overlay
+	-- Red at the edges, yellow in between, green in the centre.
+	local gradient = Instance.new("UIGradient")
+	gradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(110, 0, 0)),
+		ColorSequenceKeypoint.new(0.35, Color3.fromRGB(200, 150, 0)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 200, 80)),
+		ColorSequenceKeypoint.new(0.65, Color3.fromRGB(200, 150, 0)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(110, 0, 0)),
+	})
+	gradient.Parent = bar
+
+	local centre = Instance.new("Frame")
+	centre.Name = "Centre"
+	centre.AnchorPoint = Vector2.new(0.5, 0)
+	centre.Position = UDim2.fromScale(0.5, 0)
+	centre.Size = UDim2.new(0, 2, 1, 0)
+	centre.BackgroundColor3 = BLACK
+	centre.BorderSizePixel = 0
+	centre.Parent = bar
+
+	local cursor = Instance.new("Frame")
+	cursor.Name = "Cursor"
+	cursor.AnchorPoint = Vector2.new(0.5, 0.5)
+	cursor.Position = UDim2.fromScale(0, 0.5)
+	cursor.Size = UDim2.new(0, 10, 1, 12)
+	cursor.BackgroundColor3 = WHITE
+	cursor.BorderSizePixel = 0
+	cursor.Parent = bar
+	local cursorStroke = Instance.new("UIStroke")
+	cursorStroke.Color = BLACK
+	cursorStroke.Thickness = 2
+	cursorStroke.Parent = cursor
+
+	return bar, cursor
+end
+
+-- Shows the square dodge box (sized `size` pixels) in place of the
+-- dialogue box and returns it, emptied. Bullets and the heart go inside.
+function BattleUI.showDodgeBox(size: number): Frame
+	local u = getUi()
+	u.dodge:ClearAllChildren()
+	local stroke = Instance.new("UIStroke")
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Color = WHITE
+	stroke.Thickness = 4
+	stroke.Parent = u.dodge
+	u.dodge.Size = UDim2.fromOffset(size, size)
+	u.box.Visible = false
+	u.dodge.Visible = true
+	return u.dodge
+end
+
+function BattleUI.hideDodgeBox()
+	local u = getUi()
+	u.dodge.Visible = false
+	u.dodge:ClearAllChildren()
+	u.box.Visible = true
 end
 
 function BattleUI.setPlayerHP(hp: number, maxHP: number)
@@ -292,6 +394,7 @@ end
 
 function BattleUI.hide()
 	BattleUI.clearOptions()
+	BattleUI.hideDodgeBox()
 	getUi().gui.Enabled = false
 end
 

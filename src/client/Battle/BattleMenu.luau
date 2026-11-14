@@ -114,10 +114,17 @@ function BattleMenu.choose(buttons: { TextButton }, columns: number, allowBack: 
 end
 
 -- Waits until the player confirms (key, click or tap anywhere).
-function BattleMenu.waitForConfirm()
+-- With `timeout`, gives up after that many seconds. Returns true if the
+-- player pressed, false if time ran out.
+function BattleMenu.waitForConfirm(timeout: number?): boolean
 	cleanup()
 	local event = Instance.new("BindableEvent")
 	wake = event
+	if timeout then
+		task.delay(timeout, function()
+			event:Fire(false)
+		end)
+	end
 	-- Ignore input for a moment so the press that triggered this message
 	-- doesn't skip it straight away.
 	local readyAt = os.clock() + 0.2
@@ -128,11 +135,12 @@ function BattleMenu.waitForConfirm()
 		local isPointer = input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch
 		if isPointer or (CONFIRM_KEYS[input.KeyCode] and not gameProcessed) then
-			event:Fire()
+			event:Fire(true)
 		end
 	end))
-	event.Event:Wait()
+	local pressed = event.Event:Wait()
 	cleanup()
+	return pressed == true
 end
 
 return BattleMenu

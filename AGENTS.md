@@ -44,8 +44,8 @@ An Undertale-inspired Roblox game, built together with a young co-designer (the 
   - `src/client/` → `StarterPlayer/StarterPlayerScripts/Client` (LocalScripts, `*.client.luau`; `Main.client.luau` is the entry point)
   - `src/server/` → `ServerScriptService/Server` (Scripts, `*.server.luau`, only when something needs the server)
   - `assets/rooms/` → `Workspace/Rooms` (room geometry as `.rbxm` model files). This folder has `$ignoreUnknownInstances: true` so Rojo never deletes rooms built in Studio that aren't saved to disk yet. Keep it that way.
-- Setup on a new machine: `winget install Rojo.Rokit`, then `rokit install` in the repo (installs the pinned Rojo), then `rojo plugin install` (Studio plugin). Recommended VS Code extensions are in `.vscode/extensions.json`.
-- Check the project before handing off: `rojo build -o build/test.rbxl` must succeed. For luau-lsp type info, run `rojo sourcemap -o sourcemap.json` (git-ignored).
+- Setup on a new machine: `winget install Rojo.Rokit`, then `rokit install` in the repo (installs the pinned Rojo and luau-lsp), then `rojo plugin install` (Studio plugin). Recommended VS Code extensions are in `.vscode/extensions.json`.
+- Check the project before handing off: `bash scripts/check.sh` must pass. It type-checks all of `src/` with luau-lsp (zero errors allowed) and makes a test build with Rojo. Dev tools and setup are described in `README.md`.
 - Develop: run `rojo serve`, then connect from the Rojo plugin in Studio. Edit code in the repo, never in Studio, or Rojo will overwrite it.
 - Placeholder rooms are **built from code**: a layout table per room in `src/shared/Rooms/` (e.g. `Room1.luau`, typed by `RoomTypes.luau`), turned into Parts at runtime by `src/server/RoomBuilder.luau`. North is -Z (screen top), south is +Z. Rooms therefore only appear during Play, not in edit mode.
 - Later, hand-built rooms (e.g. with the nephew's art) can be made in Studio and saved as `.rbxm` into `assets/rooms/` (right-click → Save to File) so they're versioned too.

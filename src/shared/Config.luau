@@ -39,6 +39,21 @@ local Config = {
 
 	-- Player stats. Damage = max(1, ATK - DEF) x timing multiplier.
 	PlayerStats = { HP = 20, ATK = 6, DEF = 0 },
+
+	-- Attack timing bar (step 6). The cursor crosses the bar in this many
+	-- seconds; press near the centre for more damage, too late = miss.
+	AttackBarDuration = 1.6,
+	AttackMinMultiplier = 0.4, -- pressed at the very edge
+	AttackMaxMultiplier = 1.6, -- pressed in the centre
+	AttackCriticalZone = 0.08, -- within this fraction of the centre = max damage
+
+	-- Dodge phase (step 7): the heart in the box.
+	AttackTextTime = 1.2, -- seconds the enemy's attack line shows first
+	DodgeBoxMaxSize = 220, -- pixels; shrinks on short (phone) screens
+	DodgeBoxMinSize = 140,
+	HeartSpeed = 0.8, -- box widths per second
+	HeartHitRadius = 6, -- pixels; smaller than the heart looks, to feel fair
+	InvincibilityTime = 1.0, -- seconds after a hit when you can't be hit again
 }
 
 return Config

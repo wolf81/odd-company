@@ -13,6 +13,7 @@ local RunService = game:GetService("RunService")
 
 local BattleLogic = require(ReplicatedStorage.Modules.Battle.BattleLogic)
 local Config = require(ReplicatedStorage.Modules.Config)
+local Damage = require(ReplicatedStorage.Modules.Battle.Damage)
 local EnemyTypes = require(ReplicatedStorage.Modules.Enemies.EnemyTypes)
 local Enemies = require(ReplicatedStorage.Modules.Enemies)
 local EncounterTrigger = require(script.Parent.EncounterTrigger)
@@ -21,7 +22,9 @@ local TopDownCamera = require(script.Parent.TopDownCamera)
 local BattleArena = require(script.BattleArena)
 local BattleMenu = require(script.BattleMenu)
 local BattleUI = require(script.BattleUI)
+local DodgeBox = require(script.DodgeBox)
 local Fade = require(script.Fade)
+local Patterns = require(script.Patterns)
 
 local CAMERA_BIND = "BattleCamera"
 
@@ -75,22 +78,74 @@ local hooks: BattleLogic.Hooks = {
 		end
 	end,
 
+	-- Step 6: timing bar. The cursor slides left to right; press (key,
+	-- click or tap) to strike. Centre = most damage, no press = miss.
 	playerAttack = function(_battle, _target)
-		-- Step 6 replaces this with the timing bar.
-		return 1
+		local _, cursor = BattleUI.showAttackBar()
+		local duration = Config.AttackBarDuration
+		local startTime = os.clock()
+		local function progress(): number
+			return math.clamp((os.clock() - startTime) / duration, 0, 1)
+		end
+		local moving = RunService.RenderStepped:Connect(function()
+			cursor.Position = UDim2.fromScale(progress(), 0.5)
+		end)
+		local pressed = BattleMenu.waitForConfirm(duration)
+		moving:Disconnect()
+		local p = progress()
+		cursor.Position = UDim2.fromScale(p, 0.5)
+
+		local multiplier = 0
+		if pressed then
+			local fromCentre = math.abs(p - 0.5) * 2 -- 0 = centre, 1 = edge
+			if fromCentre <= Config.AttackCriticalZone then
+				multiplier = Config.AttackMaxMultiplier
+			else
+				local minM, maxM = Config.AttackMinMultiplier, Config.AttackMaxMultiplier
+				multiplier = minM + (maxM - minM) * (1 - fromCentre)
+			end
+			-- Blink the cursor to show where it stopped.
+			for i = 1, 4 do
+				cursor.BackgroundTransparency = if i % 2 == 1 then 0.8 else 0
+				task.wait(0.08)
+			end
+		end
+		return multiplier
 	end,
 
+	enemyHit = function(battle, target, damage)
+		BattleArena.showHit(damage, battle.enemies[target].hp <= 0)
+	end,
+
+	-- Step 7: the dodge phase. Each alive enemy runs its next pattern;
+	-- only hits that land count. HP drops live as you get hit.
 	enemyTurn = function(battle)
-		-- Step 7 replaces this with the dodge phase: only hits that land count.
-		local hits = {}
 		local lines = {}
+		local jobs: { DodgeBox.Job } = {}
 		for _, i in BattleLogic.aliveEnemies(battle) do
-			table.insert(hits, i)
-			table.insert(lines, battle.enemies[i].data.AttackText)
+			local data = battle.enemies[i].data
+			table.insert(lines, data.AttackText)
+			local names = data.AttackPatterns
+			if #names > 0 then
+				local pattern = Patterns[names[(battle.turn - 1) % #names + 1]]
+				if pattern then
+					table.insert(jobs, { owner = i, pattern = pattern })
+				end
+			end
 		end
 		BattleUI.setMessage(table.concat(lines, "\n"))
-		BattleMenu.waitForConfirm()
-		return hits
+		task.wait(Config.AttackTextTime)
+		if #jobs == 0 then
+			return {}
+		end
+
+		local previewHp = battle.player.hp
+		return DodgeBox.run(jobs, function(owner)
+			local enemy = battle.enemies[owner]
+			previewHp = math.max(0, previewHp - Damage.compute(enemy.atk, battle.player.def, 1))
+			BattleUI.setPlayerHP(previewHp, battle.player.maxHp)
+			return previewHp <= 0
+		end)
 	end,
 
 	say = function(_battle, text)
@@ -111,6 +166,7 @@ local function finish(result: BattleLogic.Result?)
 	end
 	busy = true
 	BattleMenu.cancel()
+	DodgeBox.cancel()
 
 	Fade.toBlack()
 
@@ -198,13 +254,14 @@ function Battle.start(enemyId: string, enemyModel: Model)
 	busy = false
 
 	battleThread = coroutine.running()
-	local result = BattleLogic.run(battle, hooks)
-	if result == "Win" then
+	local result: BattleLogic.Result = BattleLogic.run(battle, hooks)
+	local won = result == "Win"
+	if won then
 		hooks.say(battle, "* YOU WON!\n* You earned 0 EXP and 0 gold.")
 	else
 		hooks.say(battle, "* You lost...\n* Stay determined! Try again.")
 	end
-	finish(result)
+	finish(if won then "Win" else "Lose")
 end
 
 -- If the player respawns mid-battle, stop the battle so the room works again.

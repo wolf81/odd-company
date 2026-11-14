@@ -48,6 +48,8 @@ export type Hooks = {
 	chooseAction: (battle: Battle) -> Action,
 	-- Play the attack; return the timing multiplier (0 = miss, 1 = normal).
 	playerAttack: (battle: Battle, target: number) -> number,
+	-- Show the hit on the enemy (damage 0 = miss). HP is already updated.
+	enemyHit: (battle: Battle, target: number, damage: number) -> (),
 	-- Play the enemies' turn; return the list of hits the player took,
 	-- as enemy indices (one entry per hit).
 	enemyTurn: (battle: Battle) -> { number },
@@ -112,11 +114,13 @@ local function resolve(battle: Battle, hooks: Hooks, action: Action)
 		local multiplier = hooks.playerAttack(battle, action.target)
 		local damage = Damage.compute(battle.player.atk, enemy.def, multiplier)
 		if damage <= 0 then
+			hooks.enemyHit(battle, action.target, 0)
 			hooks.say(battle, "* You missed!")
 			return
 		end
 		enemy.hp = math.max(0, enemy.hp - damage)
 		hooks.changed(battle)
+		hooks.enemyHit(battle, action.target, damage)
 		if enemy.hp <= 0 then
 			hooks.say(battle, `* You hit {enemy.name} for {damage}!\n* {enemy.name} was defeated!`)
 		else

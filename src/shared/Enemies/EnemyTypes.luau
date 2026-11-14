@@ -21,8 +21,11 @@ export type EnemyData = {
 	-- Lines shown in the dialogue box at the start of each player turn
 	-- (one picked at random).
 	FlavorText: { string },
-	-- What the enemy does on its turn until the dodge phase exists (step 7).
+	-- Shown briefly before the dodge phase.
 	AttackText: string,
+	-- Dodge-phase patterns (names in src/client/Battle/Patterns.luau),
+	-- used in turn order: turn 1 uses the first, turn 2 the second, ...
+	AttackPatterns: { string },
 	Acts: { Act },
 	RigType: Enum.HumanoidRigType,
 	-- Properties copied onto a HumanoidDescription to build the avatar

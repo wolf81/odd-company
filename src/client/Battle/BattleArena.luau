@@ -4,6 +4,7 @@
 -- enemy standing on a black stage in front of a black wall.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Config = require(ReplicatedStorage.Modules.Config)
 
@@ -93,6 +94,77 @@ function BattleArena.show(enemyModel: Model, idleAnimationId: string?): CFrame
 	local lookAt = enemyMiddle - Vector3.new(0, size.Y * 0.55, 0)
 	local cameraPosition = enemyMiddle + Vector3.new(0, 0, Config.BattleCameraDistance)
 	return CFrame.lookAt(cameraPosition, lookAt)
+end
+
+-- Shows a hit on the enemy: red flash, shake and a rising damage number
+-- ("MISS" when damage is 0). If `defeated`, the enemy then fades away.
+-- Waits until the effect is done.
+function BattleArena.showHit(damage: number, defeated: boolean)
+	local enemy = currentEnemy
+	if not enemy then
+		return
+	end
+	local _, size = enemy:GetBoundingBox()
+
+	-- Damage number above the enemy's head.
+	local billboard = Instance.new("BillboardGui")
+	local adornee = enemy.PrimaryPart or enemy:FindFirstChildWhichIsA("BasePart")
+	if adornee then
+		billboard.Adornee = adornee
+	end
+	billboard.AlwaysOnTop = true
+	billboard.Size = UDim2.fromOffset(160, 60)
+	billboard.StudsOffset = Vector3.new(0, size.Y / 2, 0)
+	local text = Instance.new("TextLabel")
+	text.BackgroundTransparency = 1
+	text.Size = UDim2.fromScale(1, 1)
+	text.Font = Enum.Font.Arcade
+	text.TextSize = 44
+	text.Text = if damage > 0 then tostring(damage) else "MISS"
+	text.TextColor3 = if damage > 0 then Color3.fromRGB(255, 40, 40) else Color3.fromRGB(190, 190, 190)
+	text.TextStrokeTransparency = 0
+	text.Parent = billboard
+	billboard.Parent = enemy
+	TweenService:Create(billboard, TweenInfo.new(0.7), { StudsOffset = billboard.StudsOffset + Vector3.new(0, 1.5, 0) }):Play()
+
+	if damage > 0 then
+		-- Red flash.
+		local highlight = Instance.new("Highlight")
+		highlight.FillColor = Color3.fromRGB(255, 0, 0)
+		highlight.FillTransparency = 0.3
+		highlight.OutlineTransparency = 1
+		highlight.Parent = enemy
+		TweenService:Create(highlight, TweenInfo.new(0.5), { FillTransparency = 1 }):Play()
+
+		-- Shake left and right.
+		local home = enemy:GetPivot()
+		for i = 1, 6 do
+			local offset = (if i % 2 == 0 then 1 else -1) * 0.35 * (1 - i / 7)
+			enemy:PivotTo(home * CFrame.new(offset, 0, 0))
+			task.wait(0.05)
+		end
+		enemy:PivotTo(home)
+		task.wait(0.4)
+		highlight:Destroy()
+	else
+		task.wait(0.7)
+	end
+	billboard:Destroy()
+
+	if defeated then
+		local tweens = {}
+		for _, d in enemy:GetDescendants() do
+			if d:IsA("BasePart") and d.Transparency < 1 then
+				table.insert(tweens, TweenService:Create(d, TweenInfo.new(0.8), { Transparency = 1 }))
+			elseif d:IsA("Decal") then
+				table.insert(tweens, TweenService:Create(d, TweenInfo.new(0.8), { Transparency = 1 }))
+			end
+		end
+		for _, t in tweens do
+			t:Play()
+		end
+		task.wait(0.8)
+	end
 end
 
 function BattleArena.hide()

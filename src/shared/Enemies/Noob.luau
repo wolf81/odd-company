@@ -19,6 +19,7 @@ local noob: EnemyTypes.EnemyData = {
 		"* Smells like a brand new account.",
 	},
 	AttackText = "* Noob throws a wobbly block at you!",
+	AttackPatterns = { "FallingBlocks", "SideBlocks", "BlockRows" },
 	Acts = {
 		{ Name = "Wave", Message = "* You wave at Noob.\n* Noob waves back... with the wrong arm." },
 		{ Name = "Teach", Message = "* You show Noob how to walk properly.\n* Noob seems grateful." },

@@ -92,9 +92,10 @@ function RoomBuilder.build(layout: RoomTypes.RoomLayout, parent: Instance): Mode
 	local floor = makePart("Floor", floorSize, layout.Center + Vector3.new(0, FLOOR_THICKNESS / 2, 0), layout.FloorColor, model)
 	model.PrimaryPart = floor
 
-	for _, wall: RoomTypes.Wall in { "North", "South", "East", "West" } do
-		buildWall(layout, wall, model)
-	end
+	buildWall(layout, "North", model)
+	buildWall(layout, "South", model)
+	buildWall(layout, "East", model)
+	buildWall(layout, "West", model)
 
 	local spawnPos = layout.Center + layout.SpawnOffset + Vector3.new(0, FLOOR_THICKNESS, 0)
 	local spawnMarker = makePart("Spawn", Vector3.new(1, 1, 1), spawnPos, layout.FloorColor, model)
