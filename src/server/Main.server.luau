@@ -1,33 +1,68 @@
 --!strict
--- Server entry point. Builds the room and puts each player's own avatar in it.
--- The MVP battle will run on the client; the server only does world setup.
+-- Server entry point. Builds the rooms (with their enemies and allies) and
+-- puts each player's own avatar in the start room (the village).
+-- Battles, talking and following run on the client; the server only does
+-- world setup.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Allies = require(ReplicatedStorage.Modules.Allies)
 local Config = require(ReplicatedStorage.Modules.Config)
 local Enemies = require(ReplicatedStorage.Modules.Enemies)
-local Room1 = require(ReplicatedStorage.Modules.Rooms.Room1)
+local RoomTypes = require(ReplicatedStorage.Modules.Rooms.RoomTypes)
+local AllyBuilder = require(script.Parent.AllyBuilder)
 local EnemyBuilder = require(script.Parent.EnemyBuilder)
 local RoomBuilder = require(script.Parent.RoomBuilder)
 
-local roomsFolder = workspace:WaitForChild("Rooms")
-local room1 = RoomBuilder.build(Room1, roomsFolder)
+local ROOMS: { RoomTypes.RoomLayout } = {
+	require(ReplicatedStorage.Modules.Rooms.Village),
+	require(ReplicatedStorage.Modules.Rooms.Room1),
+}
 
--- Enemies go in an "Enemies" folder inside the room.
-local enemiesFolder = Instance.new("Folder")
-enemiesFolder.Name = "Enemies"
-enemiesFolder.Parent = room1
-local floorTop = (room1.PrimaryPart :: BasePart).Position.Y + (room1.PrimaryPart :: BasePart).Size.Y / 2
-for _, placement in Room1.Enemies do
-	local data = Enemies[placement.Id]
-	if data then
-		local floorPosition = Vector3.new(Room1.Center.X + placement.Offset.X, floorTop, Room1.Center.Z + placement.Offset.Z)
-		EnemyBuilder.spawn(data, floorPosition, enemiesFolder)
-	else
-		warn(`[Main] {Room1.Name}: unknown enemy "{placement.Id}"`)
+local function makeFolder(name: string, parent: Instance): Folder
+	local folder = Instance.new("Folder")
+	folder.Name = name
+	folder.Parent = parent
+	return folder
+end
+
+local function buildRoom(layout: RoomTypes.RoomLayout, parent: Instance): Model
+	local room = RoomBuilder.build(layout, parent)
+
+	local enemiesFolder = makeFolder("Enemies", room)
+	for _, placement in layout.Enemies do
+		local data = Enemies[placement.Id]
+		if data then
+			EnemyBuilder.spawn(data, RoomBuilder.floorPosition(layout, placement.Offset), enemiesFolder)
+		else
+			warn(`[Main] {layout.Name}: unknown enemy "{placement.Id}"`)
+		end
+	end
+
+	local alliesFolder = makeFolder("Allies", room)
+	local allies: { RoomTypes.AllyPlacement } = layout.Allies or {}
+	for _, placement in allies do
+		local data = Allies[placement.Id]
+		if data then
+			AllyBuilder.spawn(data, RoomBuilder.floorPosition(layout, placement.Offset), alliesFolder)
+		else
+			warn(`[Main] {layout.Name}: unknown ally "{placement.Id}"`)
+		end
+	end
+	return room
+end
+
+local roomsFolder = workspace:WaitForChild("Rooms")
+local startRoom: Model? = nil
+for _, layout in ROOMS do
+	local room = buildRoom(layout, roomsFolder)
+	if layout.Name == Config.StartRoom then
+		startRoom = room
 	end
 end
+assert(startRoom, `[Main] start room "{Config.StartRoom}" is not in ROOMS`)
+local spawnRoom: Model = startRoom
 
 local function onCharacterAdded(character: Model)
 	local humanoid = character:WaitForChild("Humanoid") :: Humanoid
@@ -41,7 +76,7 @@ local function onCharacterAdded(character: Model)
 	-- Wait one frame so the avatar's accessories are attached before we
 	-- measure its height for placement.
 	task.wait()
-	RoomBuilder.placeCharacter(room1, character)
+	RoomBuilder.placeCharacter(spawnRoom, character)
 end
 
 local function onPlayerAdded(player: Player)
@@ -56,4 +91,4 @@ for _, player in Players:GetPlayers() do
 	onPlayerAdded(player)
 end
 
-print(`[{Config.GameName}] server running, built {room1.Name}`)
+print(`[{Config.GameName}] server running, built {#ROOMS} rooms, start: {spawnRoom.Name}`)

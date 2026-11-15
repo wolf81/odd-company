@@ -4,7 +4,7 @@
 local EnemyTypes = require(script.EnemyTypes)
 
 local Enemies: { [string]: EnemyTypes.EnemyData } = {
-	Noob = require(script.Noob),
+	Builderman = require(script.Builderman),
 }
 
 return Enemies

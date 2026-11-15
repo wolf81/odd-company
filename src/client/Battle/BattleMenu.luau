@@ -2,7 +2,7 @@
 -- Battle input: choosing from a set of buttons and confirming messages.
 -- Works with mouse, touch, keyboard and gamepad:
 --   move:    arrow keys / WASD / D-pad      (or hover with the mouse)
---   confirm: Z / Enter / Space / gamepad A  (or click / tap)
+--   confirm: Z / Enter / Space / E / gamepad A  (or click / tap)
 --   back:    X / Backspace / gamepad B
 
 local UserInputService = game:GetService("UserInputService")
@@ -16,6 +16,7 @@ local CONFIRM_KEYS = {
 	[Enum.KeyCode.Return] = true,
 	[Enum.KeyCode.KeypadEnter] = true,
 	[Enum.KeyCode.Space] = true,
+	[Enum.KeyCode.E] = true, -- the Talk key, so village dialogue can continue with it too
 	[Enum.KeyCode.ButtonA] = true,
 }
 local BACK_KEYS = {

@@ -8,11 +8,11 @@ An Undertale-inspired Roblox game, built together with a young co-designer (the 
 
 ## How to work
 
-- **Follow `PLAN.md` in order.** Build the current step only; each step must end in something testable in Studio. Don't pull in out-of-scope features (saving, inventory, multiplayer, more than the three MVP rooms) before their roadmap phase.
+- **Follow `PLAN.md` in order.** Build the current step only; each step must end in something testable in Studio. Don't pull in out-of-scope features (saving, inventory, multiplayer, rooms beyond the village and the three MVP rooms, more than 3 allies in the team) before their roadmap phase.
 - **Update `PLAN.md`** when a step is done or a decision is made: tick it off and replace assumptions with the answer.
 - **Don't decide open questions silently.** If work depends on one (see the end of `PLAN.md`), ask, or go with the documented assumption and say so.
 - **Placeholder art for rooms** until the nephew's drawings arrive: plain Parts, Frames and simple colours.
-- **Enemies are classic Roblox avatars** (Noob, Builderman, Headless Horseman, Korblox Deathspeaker, later Bacon girl and Shadow master; see the roster in `PLAN.md`). Build them in code from a `HumanoidDescription` stored in each enemy's data table, using `Players:CreateHumanoidModelFromDescription` with the rig type (R6 or R15) also set in that table. Don't hand-build rigs in Studio. Enemy rigs are anchored or scripted; they don't use player movement.
+- **Enemies are classic Roblox avatars** (Builderman, Bacon girl, Headless Horseman, Korblox Deathspeaker, later Shadow master; see the roster in `PLAN.md`; the allies Noob and Elliot are built the same way). Build them in code from a `HumanoidDescription` stored in each enemy's data table, using `Players:CreateHumanoidModelFromDescription` with the rig type (R6 or R15) also set in that table. Don't hand-build rigs in Studio. Enemy rigs are anchored or scripted; they don't use player movement.
 - **The player is their own Roblox avatar.** Don't add a `StarterCharacter` or replace or restyle the character. Both **R6 and R15** avatars are allowed (Game Settings: Player Choice), so code must work with any rig type, size, shape and accessories: use the `Humanoid` and `HumanoidRootPart` only, never named body parts (`Torso` vs `UpperTorso`, etc.) or fixed heights. Test movement, triggers and doors with one R6 and one R15 avatar. In battle the player is shown as the heart in the dodge box plus their avatar headshot in the HUD.
 - **Keep it readable.** A beginner should be able to follow the code. Prefer short, well-named functions and comments that say *why*, over clever abstractions.
 
@@ -22,10 +22,10 @@ An Undertale-inspired Roblox game, built together with a young co-designer (the 
 - Layout (from the plan):
   - `ReplicatedStorage/Modules/` — shared ModuleScripts (battle state machine, enemy data, damage formula).
   - `StarterPlayerScripts/` — client entry points (camera, movement, battle UI).
-  - `Workspace/Rooms/Room1`, `Room2`, `Room3` — room geometry, doors and enemy triggers.
+  - `Workspace/Rooms/Village`, `Room1`, `Room2`, `Room3` — room geometry, doors, enemy triggers, allies and chests.
 - Game data (enemy stats, attack patterns, tuning numbers) lives in plain tables in their own modules, not inline in logic, so it's easy to tweak during playtests.
 - Battle states: `PlayerTurn → ResolveAction → EnemyTurn → CheckEnd → Win | Lose`. Keep transitions in one place.
-- A battle takes a **list** of enemies from the start, even though rooms 1 and 2 have only one. Room 3 needs two, and this avoids a rewrite at step 11.
+- A battle takes a **list** of enemies from the start, even though rooms 1 and 2 have only one. Room 3 needs two, and this avoids a rewrite at step 14.
 - MVP battle logic is client-only. Keep it in ModuleScripts with no direct UI calls, so it can move server-side later if co-op is chosen.
 - Use `Players.LocalPlayer`, `task.wait`/`task.spawn` (not `wait`/`spawn`), and `game:GetService(...)`.
 

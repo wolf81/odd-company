@@ -35,7 +35,7 @@ export type EnemyData = {
 	Avatar: { [string]: any },
 	-- Animation that loops while the enemy stands in its room (optional).
 	IdleAnimationId: string?,
-	-- Used from step 8 (stats and damage). Placeholder numbers until then.
+	-- HP, ATK and DEF in battle. Damage = max(1, ATK - DEF) x timing.
 	Stats: Stats,
 }
 

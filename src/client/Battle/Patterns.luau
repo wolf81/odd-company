@@ -9,15 +9,16 @@
 
 local DodgeBox = require(script.Parent.DodgeBox)
 
-local NOOB_COLORS = {
-	Color3.fromRGB(245, 205, 48), -- yellow
-	Color3.fromRGB(13, 105, 172), -- blue
-	Color3.fromRGB(164, 189, 71), -- green
+-- Builderman's bricks.
+local BRICK_COLORS = {
+	Color3.fromRGB(196, 40, 28), -- brick red
+	Color3.fromRGB(218, 133, 65), -- orange
+	Color3.fromRGB(163, 162, 165), -- concrete grey
 }
 
 local Patterns: { [string]: DodgeBox.Pattern } = {}
 
--- Noob 1: blocks fall from the top, wobbling left and right.
+-- Builderman 1: bricks fall from the top, wobbling left and right.
 Patterns.FallingBlocks = {
 	Duration = 5,
 	Run = function(api)
@@ -30,7 +31,7 @@ Patterns.FallingBlocks = {
 				position = Vector2.new(baseX, -blockSize),
 				velocity = Vector2.new(0, s * 0.45),
 				size = Vector2.new(blockSize, blockSize),
-				color = NOOB_COLORS[api.random:NextInteger(1, #NOOB_COLORS)],
+				color = BRICK_COLORS[api.random:NextInteger(1, #BRICK_COLORS)],
 				update = function(b, _dt)
 					b.pos = Vector2.new(baseX + math.sin(b.age * 4 + phase) * s * 0.06, b.pos.Y)
 				end,
@@ -40,7 +41,7 @@ Patterns.FallingBlocks = {
 	end,
 }
 
--- Noob 2: blocks slide in from the left and right sides.
+-- Builderman 2: bricks slide in from the left and right sides.
 Patterns.SideBlocks = {
 	Duration = 5,
 	Run = function(api)
@@ -55,14 +56,14 @@ Patterns.SideBlocks = {
 				position = Vector2.new(x, y),
 				velocity = Vector2.new(vx, 0),
 				size = Vector2.new(blockSize, blockSize),
-				color = NOOB_COLORS[api.random:NextInteger(1, #NOOB_COLORS)],
+				color = BRICK_COLORS[api.random:NextInteger(1, #BRICK_COLORS)],
 			})
 			api.wait(0.5)
 		end
 	end,
 }
 
--- Noob 3: rows of blocks fall with one gap to slip through.
+-- Builderman 3: rows of bricks (a wall) fall with one gap to slip through.
 Patterns.BlockRows = {
 	Duration = 5.5,
 	Run = function(api)
@@ -74,7 +75,7 @@ Patterns.BlockRows = {
 				return
 			end
 			local gapCentre = api.random:NextNumber(0.2, 0.8) * s
-			local color = NOOB_COLORS[(row - 1) % #NOOB_COLORS + 1]
+			local color = BRICK_COLORS[(row - 1) % #BRICK_COLORS + 1]
 			local x = blockSize / 2
 			while x < s do
 				if math.abs(x - gapCentre) > gapWidth / 2 then

@@ -17,6 +17,7 @@ local Damage = require(ReplicatedStorage.Modules.Battle.Damage)
 local EnemyTypes = require(ReplicatedStorage.Modules.Enemies.EnemyTypes)
 local Enemies = require(ReplicatedStorage.Modules.Enemies)
 local EncounterTrigger = require(script.Parent.EncounterTrigger)
+local Party = require(script.Parent.Party)
 local PlayerControl = require(script.Parent.PlayerControl)
 local TopDownCamera = require(script.Parent.TopDownCamera)
 local BattleArena = require(script.BattleArena)
@@ -57,24 +58,78 @@ local function flavorText(battle: BattleLogic.Battle): string
 	return lines[math.random(1, #lines)]
 end
 
+-- Shows the team's names and the ALLY button (hidden with no team).
+local function showTeam(battle: BattleLogic.Battle)
+	local names = {}
+	for _, ally in battle.allies do
+		table.insert(names, ally.data.DisplayName)
+	end
+	BattleUI.setTeam(names)
+end
+
+-- Which ally acts. With one ally there's nothing to choose. The list shows
+-- each ability and the turns left while it cools down ("Elliot: PIZZA 2").
+local function pickAlly(battle: BattleLogic.Battle): number?
+	if #battle.allies == 1 then
+		return 1
+	end
+	local labels = {}
+	for i, ally in battle.allies do
+		local wait = BattleLogic.abilityWait(battle, i)
+		local button = ally.data.Ability.Button
+		table.insert(labels, if wait > 0 then `{ally.data.DisplayName}: {button} {wait}` else `{ally.data.DisplayName}: {button}`)
+	end
+	return BattleMenu.choose(BattleUI.showOptions(labels), 2, true)
+end
+
+local ATTACK, ACT, ALLY = 1, 2, 3 -- command button order
+
+-- An ally's ability: pick the ally, then a target if it hits one enemy;
+-- abilities that hit several start with the first alive enemy.
+-- nil = pressed back, or the ability isn't ready yet.
+local function chooseAbility(battle: BattleLogic.Battle): BattleLogic.Action?
+	local index = pickAlly(battle)
+	local ally = if index then battle.allies[index] else nil
+	if not index or not ally then
+		return nil
+	end
+	local wait = BattleLogic.abilityWait(battle, index)
+	if wait > 0 then
+		local turns = if wait == 1 then "1 more turn" else `{wait} more turns`
+		BattleUI.setMessage(`* {ally.data.DisplayName} needs {turns} before using {ally.data.Ability.Name} again.`)
+		BattleMenu.waitForConfirm()
+		return nil
+	end
+	local target = if ally.data.Ability.MaxTargets == 1 then pickTarget(battle) else BattleLogic.aliveEnemies(battle)[1]
+	return if target then { kind = "Ability", target = target, ally = index } :: BattleLogic.Action else nil
+end
+
 local hooks: BattleLogic.Hooks = {
 	chooseAction = function(battle)
 		local flavor = flavorText(battle)
 		while true do
 			BattleUI.setMessage(flavor)
-			local command = BattleMenu.choose(BattleUI.commandButtons(), 2, false)
-			local target = pickTarget(battle)
-			if target then
-				if command == 1 then
-					return { kind = "Attack", target = target } :: BattleLogic.Action
+			showTeam(battle)
+			local buttons = BattleUI.commandButtons()
+			local command = BattleMenu.choose(buttons, #buttons, false)
+			if command == ALLY then
+				local action = chooseAbility(battle)
+				if action then
+					return action
 				end
-				local acts = BattleLogic.actNames(battle.enemies[target])
-				local act = BattleMenu.choose(BattleUI.showOptions(acts), 2, true)
-				if act then
-					return { kind = "Act", target = target, act = act } :: BattleLogic.Action
+			else
+				local target = pickTarget(battle)
+				if target and command == ATTACK then
+					return { kind = "Attack", target = target } :: BattleLogic.Action
+				elseif target and command == ACT then
+					local acts = BattleLogic.actNames(battle.enemies[target])
+					local act = BattleMenu.choose(BattleUI.showOptions(acts), 2, true)
+					if act then
+						return { kind = "Act", target = target, act = act } :: BattleLogic.Action
+					end
 				end
 			end
-			-- Pressed back: return to the command buttons.
+			-- Pressed back (or ability not ready): back to the command buttons.
 		end
 	end,
 
@@ -176,7 +231,7 @@ local function finish(result: BattleLogic.Result?)
 
 	local enemyModel = currentEnemyModel
 	if result == "Win" and enemyModel then
-		-- Gone for this session (on this client). Step 12 makes it permanent.
+		-- Gone for this session (on this client). Step 15 makes it permanent.
 		enemyModel:Destroy()
 	elseif result == "Lose" and enemyModel then
 		local room = enemyModel:FindFirstAncestorWhichIsA("Model")
@@ -235,7 +290,7 @@ function Battle.start(enemyId: string, enemyModel: Model)
 		camera.CFrame = cameraCFrame
 	end)
 
-	-- Rooms 1 and 2 have one enemy; room 3 will pass two (step 11).
+	-- Rooms 1 and 2 have one enemy; room 3 will pass two (step 14).
 	local enemyList: { EnemyTypes.EnemyData } = { data }
 	local stats = Config.PlayerStats
 	local battle = BattleLogic.new({
@@ -244,10 +299,11 @@ function Battle.start(enemyId: string, enemyModel: Model)
 		maxHp = stats.HP,
 		atk = stats.ATK,
 		def = stats.DEF,
-	}, enemyList)
+	}, enemyList, Party.allies())
 
 	BattleUI.setMessage("")
 	BattleUI.setPlayerHP(battle.player.hp, battle.player.maxHp)
+	showTeam(battle)
 	BattleUI.show()
 	print(`[{Config.GameName}] battle started: {data.DisplayName}`)
 	Fade.fromBlack()

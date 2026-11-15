@@ -28,6 +28,25 @@ local Config = {
 	-- CollectionService tag on the invisible box around each enemy.
 	EnemyTriggerTag = "EnemyTrigger",
 
+	-- Village (step 10–11): where the player starts, and talking to people.
+	StartRoom = "Village",
+	-- How close (studs) you must be to see the Talk / Open prompt.
+	InteractDistance = 8,
+	-- Attributes on each ProximityPrompt say what it's for.
+	AllyPromptAttribute = "AllyId",
+	ChestPromptAttribute = "ChestItem",
+
+	-- At most this many allies in the team; to recruit another you send
+	-- one back to the village.
+	MaxTeamSize = 3,
+
+	-- A recruited ally walks after you along your own path.
+	AllyFollowGap = 4, -- studs behind you
+	AllyWalkSpeed = 16, -- studs per second (same as the default player speed)
+	-- If you jump further than this at once (respawn, lose a battle), the
+	-- ally pops straight to you instead of walking.
+	AllyTeleportDistance = 25,
+
 	-- Battle scene: a dark arena built on the client, far from the rooms.
 	BattleArenaPosition = Vector3.new(0, 500, 0),
 	BattleCameraDistance = 16, -- studs in front of the enemy

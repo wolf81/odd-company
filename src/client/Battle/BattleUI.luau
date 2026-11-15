@@ -2,8 +2,9 @@
 -- Battle screen, layout A ("classic box") from design/Game UI Proposals.html:
 --   enemy at the top (3D, from BattleArena), a dialogue box in the middle
 --   (messages and option lists; the dodge box appears there in step 7),
---   the player's row with avatar headshot, name and HP, and command
---   buttons along the bottom.
+--   the player's row with avatar headshot, name, HP and ally, and command
+--   buttons along the bottom (ATTACK, ACT, and ALLY if
+--   anyone joined your team in the village).
 -- Rules: text >= 18 px, buttons >= 44 px tall, bottom corners left free.
 -- This module only draws. Input is handled by BattleMenu.
 
@@ -29,7 +30,8 @@ type Ui = {
 	dodge: Frame, -- the dodge box (step 7), hidden until the enemy's turn
 	hpFill: Frame,
 	hpText: TextLabel,
-	commands: { TextButton },
+	allyLabel: TextLabel,
+	commands: { TextButton }, -- ATTACK, ACT, ALLY (hidden without a team)
 }
 
 local ui: Ui? = nil
@@ -51,7 +53,7 @@ local function makeCommandButton(parent: Instance, name: string, order: number):
 	local b = Instance.new("TextButton")
 	b.Name = name
 	b.LayoutOrder = order
-	b.Size = UDim2.fromOffset(170, 52)
+	b.Size = UDim2.fromOffset(150, 52)
 	b.BackgroundColor3 = BLACK
 	b.AutoButtonColor = false
 	b.Selectable = false -- BattleMenu handles keyboard/gamepad selection
@@ -201,6 +203,12 @@ local function build(): Ui
 	local hpText = label(row, "", 22)
 	hpText.LayoutOrder = 5
 
+	-- "& Noob": who fights with you. Hidden when you're on your own.
+	local allyLabel = label(row, "", 22)
+	allyLabel.LayoutOrder = 6
+	allyLabel.TextColor3 = ORANGE
+	allyLabel.Visible = false
+
 	-- Command buttons, centred so the bottom corners stay free.
 	local buttonRow = Instance.new("Frame")
 	buttonRow.Name = "Commands"
@@ -219,7 +227,9 @@ local function build(): Ui
 	local commands = {
 		makeCommandButton(buttonRow, "ATTACK", 1),
 		makeCommandButton(buttonRow, "ACT", 2),
+		makeCommandButton(buttonRow, "ALLY", 3),
 	}
+	commands[3].Visible = false
 
 	return {
 		gui = gui,
@@ -230,6 +240,7 @@ local function build(): Ui
 		dodge = dodge,
 		hpFill = hpFill,
 		hpText = hpText,
+		allyLabel = allyLabel,
 		commands = commands,
 	}
 end
@@ -241,9 +252,26 @@ local function getUi(): Ui
 	return ui :: Ui
 end
 
--- Command buttons, in order: ATTACK, ACT.
+-- Visible command buttons, in order: ATTACK, ACT, then ALLY if you
+-- have a team.
 function BattleUI.commandButtons(): { TextButton }
-	return getUi().commands
+	local visible = {}
+	for _, b in getUi().commands do
+		if b.Visible then
+			table.insert(visible, b)
+		end
+	end
+	return visible
+end
+
+-- Shows the team in the player row ("& Noob, Elliot") and the ALLY
+-- command button. An empty list hides both (you're on your own).
+function BattleUI.setTeam(names: { string })
+	local u = getUi()
+	local hasTeam = #names > 0
+	u.allyLabel.Visible = hasTeam
+	u.allyLabel.Text = if hasTeam then `& {table.concat(names, ", ")}` else ""
+	u.commands[3].Visible = hasTeam
 end
 
 -- Highlights a button yellow (selected) or back to its normal colour.
