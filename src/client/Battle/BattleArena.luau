@@ -1,7 +1,7 @@
 --!strict
 -- The dark arena where battles are shown. Built on the client only, so
--- each player sees their own battle. The camera looks at a copy of the
--- enemy standing on a black stage in front of a black wall.
+-- each player sees their own battle. The camera looks at copies of the
+-- enemies standing side by side on a black stage in front of a black wall.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -11,7 +11,7 @@ local Config = require(ReplicatedStorage.Modules.Config)
 local BattleArena = {}
 
 local arena: Model? = nil
-local currentEnemy: Model? = nil
+local currentEnemies: { Model } = {} -- in battle order (enemy 1 on the left)
 
 local BLACK = Color3.new(0, 0, 0)
 
@@ -62,45 +62,67 @@ local function playIdle(model: Model, animationId: string)
 	end
 end
 
--- Puts a copy of `enemyModel` on the stage, facing the camera, and
--- returns the camera CFrame that frames it in the top half of the screen.
-function BattleArena.show(enemyModel: Model, idleAnimationId: string?): CFrame
-	BattleArena.hide()
-	local stage = getArena()
-
+-- Copies `enemyModel` onto the stage with its feet at `floorPosition`,
+-- facing south (+Z) toward the camera.
+local function placeCopy(enemyModel: Model, floorPosition: Vector3, stage: Instance): Model
 	local copy = enemyModel:Clone()
 	local trigger = copy:FindFirstChild("EncounterTrigger")
 	if trigger then
 		trigger:Destroy()
 	end
-
-	-- Stand on the stage at the origin, facing south (+Z) toward the camera.
-	local origin = Config.BattleArenaPosition
-	copy:PivotTo(CFrame.lookAt(origin, origin + Vector3.new(0, 0, 1)))
+	copy:PivotTo(CFrame.lookAt(floorPosition, floorPosition + Vector3.new(0, 0, 1)))
 	local boxCFrame, boxSize = copy:GetBoundingBox()
 	local bottomY = boxCFrame.Position.Y - boxSize.Y / 2
-	copy:PivotTo(copy:GetPivot() + Vector3.new(0, origin.Y - bottomY, 0))
+	copy:PivotTo(copy:GetPivot() + Vector3.new(0, floorPosition.Y - bottomY, 0))
 	copy.Parent = stage
-	currentEnemy = copy
-
-	if idleAnimationId then
-		playIdle(copy, idleAnimationId)
-	end
-
-	-- Aim below the enemy's middle so the enemy sits in the top half of
-	-- the screen, leaving room for the dialogue/dodge box and buttons.
-	local _, size = copy:GetBoundingBox()
-	local enemyMiddle = origin + Vector3.new(0, size.Y / 2, 0)
-	local lookAt = enemyMiddle - Vector3.new(0, size.Y * 0.55, 0)
-	local cameraPosition = enemyMiddle + Vector3.new(0, 0, Config.BattleCameraDistance)
-	return CFrame.lookAt(cameraPosition, lookAt)
+	return copy
 end
 
--- Shows a hit on the enemy: red flash, shake and a rising damage number
--- ("MISS" when damage is 0). If `defeated`, the enemy then fades away.
--- Waits until the effect is done.
-function BattleArena.showHit(damage: number, defeated: boolean)
-	local enemy = currentEnemy
+-- Puts copies of `enemyModels` on the stage side by side, facing the
+-- camera, and returns the camera CFrame that frames them all in the top
+-- half of the screen. `idleAnimationIds[i]` loops on enemy i (optional).
+function BattleArena.show(enemyModels: { Model }, idleAnimationIds: { string? }): CFrame
+	BattleArena.hide()
+	local stage = getArena()
+	local origin = Config.BattleArenaPosition
+
+	-- Measure everyone first, so the row can be centred on the origin.
+	local widths = {}
+	local rowWidth = 0
+	for i, model in enemyModels do
+		local _, size = model:GetBoundingBox()
+		widths[i] = math.max(size.X, size.Z)
+		rowWidth += widths[i] + (if i > 1 then Config.BattleEnemySpacing else 0)
+	end
+
+	local x = -rowWidth / 2
+	local tallest = 0
+	for i, model in enemyModels do
+		local copy = placeCopy(model, origin + Vector3.new(x + widths[i] / 2, 0, 0), stage)
+		x += widths[i] + Config.BattleEnemySpacing
+		table.insert(currentEnemies, copy)
+		local id = idleAnimationIds[i]
+		if id then
+			playIdle(copy, id)
+		end
+		local _, size = copy:GetBoundingBox()
+		tallest = math.max(tallest, size.Y)
+	end
+
+	-- Aim below the enemies' middle so they sit in the top half of the
+	-- screen, leaving room for the dialogue/dodge box and buttons. Step
+	-- back further when the row is wide, so everyone fits.
+	local middle = origin + Vector3.new(0, tallest / 2, 0)
+	local lookAt = middle - Vector3.new(0, tallest * 0.55, 0)
+	local distance = math.max(Config.BattleCameraDistance, rowWidth * 1.6)
+	return CFrame.lookAt(middle + Vector3.new(0, 0, distance), lookAt)
+end
+
+-- Shows a hit on enemy number `index`: red flash, shake and a rising
+-- damage number ("MISS" when damage is 0). If `defeated`, the enemy then
+-- fades away. Waits until the effect is done.
+function BattleArena.showHit(index: number, damage: number, defeated: boolean)
+	local enemy = currentEnemies[index]
 	if not enemy then
 		return
 	end
@@ -168,10 +190,10 @@ function BattleArena.showHit(damage: number, defeated: boolean)
 end
 
 function BattleArena.hide()
-	if currentEnemy then
-		currentEnemy:Destroy()
-		currentEnemy = nil
+	for _, enemy in currentEnemies do
+		enemy:Destroy()
 	end
+	table.clear(currentEnemies)
 end
 
 return BattleArena

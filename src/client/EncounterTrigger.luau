@@ -12,7 +12,9 @@ local Config = require(ReplicatedStorage.Modules.Config)
 local EncounterTrigger = {}
 
 local enabled = true
-local lastTriggered: { [string]: number } = {}
+-- Per enemy model, since two Buildermans share an Id. Weak keys, so
+-- beaten (destroyed) enemies are forgotten.
+local lastTriggered: { [Model]: number } = setmetatable({}, { __mode = "k" }) :: any
 
 -- `onEncounter(enemyId, enemyModel)` is called once per touch, with a
 -- cooldown per enemy so one bump doesn't start several battles.
@@ -38,10 +40,10 @@ function EncounterTrigger.start(onEncounter: (enemyId: string, enemyModel: Model
 			end
 
 			local now = os.clock()
-			if now - (lastTriggered[enemyId] or -math.huge) < Config.EncounterCooldown then
+			if now - (lastTriggered[enemyModel] or -math.huge) < Config.EncounterCooldown then
 				return
 			end
-			lastTriggered[enemyId] = now
+			lastTriggered[enemyModel] = now
 			onEncounter(enemyId, enemyModel)
 		end)
 	end

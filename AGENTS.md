@@ -8,10 +8,10 @@ An Undertale-inspired Roblox game, built together with a young co-designer (the 
 
 ## How to work
 
-- **Follow `PLAN.md` in order.** Build the current step only; each step must end in something testable in Studio. Don't pull in out-of-scope features (saving, inventory, multiplayer, rooms beyond the village and the three MVP rooms, more than 3 allies in the team) before their roadmap phase.
+- **Follow `PLAN.md` in order.** Build the current step only; each step must end in something testable in Studio. Don't pull in out-of-scope features (saving, inventory, multiplayer, more than 3 allies in the team) before their roadmap phase.
 - **Update `PLAN.md`** when a step is done or a decision is made: tick it off and replace assumptions with the answer.
 - **Don't decide open questions silently.** If work depends on one (see the end of `PLAN.md`), ask, or go with the documented assumption and say so.
-- **Placeholder art for rooms** until the nephew's drawings arrive: plain Parts, Frames and simple colours.
+- **Placeholder art** until the nephew's drawings arrive: Roblox Terrain for the ground (grass, roads, water, rock), and plain Parts with materials for houses, trees and props.
 - **Enemies are classic Roblox avatars** (Builderman, Bacon girl, Headless Horseman, Korblox Deathspeaker, later Shadow master; see the roster in `PLAN.md`; the allies Noob and Elliot are built the same way). Build them in code from a `HumanoidDescription` stored in each enemy's data table, using `Players:CreateHumanoidModelFromDescription` with the rig type (R6 or R15) also set in that table. Don't hand-build rigs in Studio. Enemy rigs are anchored or scripted; they don't use player movement.
 - **The player is their own Roblox avatar.** Don't add a `StarterCharacter` or replace or restyle the character. Both **R6 and R15** avatars are allowed (Game Settings: Player Choice), so code must work with any rig type, size, shape and accessories: use the `Humanoid` and `HumanoidRootPart` only, never named body parts (`Torso` vs `UpperTorso`, etc.) or fixed heights. Test movement, triggers and doors with one R6 and one R15 avatar. In battle the player is shown as the heart in the dodge box plus their avatar headshot in the HUD.
 - **Keep it readable.** A beginner should be able to follow the code. Prefer short, well-named functions and comments that say *why*, over clever abstractions.
@@ -22,16 +22,16 @@ An Undertale-inspired Roblox game, built together with a young co-designer (the 
 - Layout (from the plan):
   - `ReplicatedStorage/Modules/` — shared ModuleScripts (battle state machine, enemy data, damage formula).
   - `StarterPlayerScripts/` — client entry points (camera, movement, battle UI).
-  - `Workspace/Rooms/Village`, `Room1`, `Room2`, `Room3` — room geometry, doors, enemy triggers, allies and chests.
+  - `Workspace/World` — the world built at runtime: villages, scenery, fixed enemies (with triggers), allies and chests.
 - Game data (enemy stats, attack patterns, tuning numbers) lives in plain tables in their own modules, not inline in logic, so it's easy to tweak during playtests.
 - Battle states: `PlayerTurn → ResolveAction → EnemyTurn → CheckEnd → Win | Lose`. Keep transitions in one place.
-- A battle takes a **list** of enemies from the start, even though rooms 1 and 2 have only one. Room 3 needs two, and this avoids a rewrite at step 14.
+- A battle takes a **list** of enemies: random fights and the forest gate can have two.
 - MVP battle logic is client-only. Keep it in ModuleScripts with no direct UI calls, so it can move server-side later if co-op is chosen.
 - Use `Players.LocalPlayer`, `task.wait`/`task.spawn` (not `wait`/`spawn`), and `game:GetService(...)`.
 
 ## UI rules
 
-- MVP layouts: **A** (battle, classic box) and **D** (room, minimal HUD).
+- MVP layouts: **A** (battle, classic box) and **D** (exploring, minimal HUD).
 - Text ≥ 18 px, buttons ≥ 44 px tall, bottom corners free for the mobile thumbstick.
 - All input must work with mouse, touch and keyboard. Check against the touch layouts (C, F).
 
@@ -47,7 +47,7 @@ An Undertale-inspired Roblox game, built together with a young co-designer (the 
 - Setup on a new machine: `winget install Rojo.Rokit`, then `rokit install` in the repo (installs the pinned Rojo and luau-lsp), then `rojo plugin install` (Studio plugin). Recommended VS Code extensions are in `.vscode/extensions.json`.
 - Check the project before handing off: `bash scripts/check.sh` must pass. It type-checks all of `src/` with luau-lsp (zero errors allowed) and makes a test build with Rojo. Dev tools and setup are described in `README.md`.
 - Develop: run `rojo serve`, then connect from the Rojo plugin in Studio. Edit code in the repo, never in Studio, or Rojo will overwrite it.
-- Placeholder rooms are **built from code**: a layout table per room in `src/shared/Rooms/` (e.g. `Room1.luau`, typed by `RoomTypes.luau`), turned into Parts at runtime by `src/server/RoomBuilder.luau`. North is -Z (screen top), south is +Z. Rooms therefore only appear during Play, not in edit mode.
-- Later, hand-built rooms (e.g. with the nephew's art) can be made in Studio and saved as `.rbxm` into `assets/rooms/` (right-click → Save to File) so they're versioned too.
+- The world is **built from code**: layout tables in `src/shared/World/` (`init.luau` for the map, one file per village, `Props.luau` for houses/trees/lamps, typed by `WorldTypes.luau`), turned into Terrain and Parts at runtime by `src/server/WorldBuilder.luau`. North is -Z (screen top), south is +Z, the ground is at Y = 0. The world therefore only appears during Play, not in edit mode.
+- Later, hand-built areas (e.g. with the nephew's art) can be made in Studio and saved as `.rbxm` into `assets/rooms/` (right-click → Save to File) so they're versioned too.
 - Tool versions are pinned in `rokit.toml`. Don't commit `.rbxl` place files or editor clutter.
 - Before saying a step is done, check it actually runs in Studio (Play test). Static review of Luau isn't enough.

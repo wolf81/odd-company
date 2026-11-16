@@ -1,5 +1,5 @@
 --!strict
--- Dialogue box for talking in rooms (village): a black box at the bottom
+-- Dialogue box for talking in villages: a black box at the bottom
 -- with white text, like the battle's dialogue box. Lines wait for a
 -- confirm; questions show options (e.g. Yes / No) to pick from.
 --
@@ -10,6 +10,7 @@
 
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local TweenService = game:GetService("TweenService")
 
 local BattleMenu = require(script.Parent.Battle.BattleMenu)
 local BattleUI = require(script.Parent.Battle.BattleUI)
@@ -24,10 +25,30 @@ local FONT = Enum.Font.Arcade
 type Ui = {
 	gui: ScreenGui,
 	message: TextLabel,
+	continueHint: TextLabel,
 	options: Frame,
 }
 
 local ui: Ui? = nil
+
+-- Blinking "▼" in the bottom-right corner of `box`. Show it while a
+-- message waits for the player to continue.
+local function makeContinueHint(box: Frame): TextLabel
+	local hint = Instance.new("TextLabel")
+	hint.Name = "ContinueHint"
+	hint.AnchorPoint = Vector2.new(1, 1)
+	hint.Position = UDim2.new(1, 6, 1, 6)
+	hint.Size = UDim2.fromOffset(24, 24)
+	hint.BackgroundTransparency = 1
+	hint.Font = Enum.Font.SourceSansBold
+	hint.Text = "▼"
+	hint.TextSize = 22
+	hint.TextColor3 = Color3.new(1, 1, 1)
+	hint.Visible = false
+	hint.Parent = box
+	TweenService:Create(hint, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { TextTransparency = 0.8 }):Play()
+	return hint
+end
 local open = false
 
 local function build(): Ui
@@ -87,7 +108,7 @@ local function build(): Ui
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = options
 
-	return { gui = gui, message = message, options = options }
+	return { gui = gui, message = message, continueHint = makeContinueHint(box), options = options }
 end
 
 local function getUi(): Ui
@@ -110,7 +131,11 @@ local function makeOption(text: string, order: number): TextButton
 	local b = Instance.new("TextButton")
 	b.Name = text
 	b.LayoutOrder = order
-	b.Size = UDim2.fromOffset(120, 44)
+	b.Size = UDim2.fromOffset(0, 44)
+	b.AutomaticSize = Enum.AutomaticSize.X -- wide enough for its text
+	local minimum = Instance.new("UISizeConstraint")
+	minimum.MinSize = Vector2.new(100, 44)
+	minimum.Parent = b
 	b.BackgroundTransparency = 1
 	b.AutoButtonColor = false
 	b.Selectable = false
@@ -146,8 +171,11 @@ end
 -- Shows one line and waits until the player confirms.
 function Dialogue.say(text: string)
 	clearOptions()
-	getUi().message.Text = text
+	local u = getUi()
+	u.message.Text = text
+	u.continueHint.Visible = true
 	BattleMenu.waitForConfirm()
+	u.continueHint.Visible = false
 end
 
 function Dialogue.sayAll(lines: { string })

@@ -3,12 +3,17 @@
 --   enemy at the top (3D, from BattleArena), a dialogue box in the middle
 --   (messages and option lists; the dodge box appears there in step 7),
 --   the player's row with avatar headshot, name, HP and ally, and command
---   buttons along the bottom (ATTACK, ACT, and ALLY if
+--   buttons along the bottom (ATTACK, ACT, ITEM, and ALLY if
 --   anyone joined your team in the village).
 -- Rules: text >= 18 px, buttons >= 44 px tall, bottom corners left free.
 -- This module only draws. Input is handled by BattleMenu.
+--
+-- So the player always knows whether it's their move: the command buttons
+-- are grey while they can't be pressed (messages, attack bar, dodging),
+-- and a blinking "▼" shows when a message is waiting for a confirm.
 
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
 local BattleUI = {}
 
@@ -17,6 +22,7 @@ local YELLOW = Color3.fromRGB(255, 255, 0)
 local RED = Color3.fromRGB(200, 0, 0)
 local WHITE = Color3.new(1, 1, 1)
 local BLACK = Color3.new(0, 0, 0)
+local GREY = Color3.fromRGB(90, 90, 90) -- command buttons you can't press now
 local FONT = Enum.Font.Arcade
 
 export type ButtonStyle = "Command" | "Option"
@@ -25,16 +31,36 @@ type Ui = {
 	gui: ScreenGui,
 	box: Frame,
 	message: TextLabel,
+	continueHint: TextLabel,
 	options: Frame,
 	overlay: Frame, -- attack bar goes here
 	dodge: Frame, -- the dodge box (step 7), hidden until the enemy's turn
 	hpFill: Frame,
 	hpText: TextLabel,
 	allyLabel: TextLabel,
-	commands: { TextButton }, -- ATTACK, ACT, ALLY (hidden without a team)
+	commands: { TextButton }, -- ATTACK, ACT, ITEM, ALLY (hidden without a team)
 }
 
 local ui: Ui? = nil
+
+-- Blinking "▼" in the bottom-right corner of `box`. Show it while a
+-- message waits for the player to continue.
+local function makeContinueHint(box: Frame): TextLabel
+	local hint = Instance.new("TextLabel")
+	hint.Name = "ContinueHint"
+	hint.AnchorPoint = Vector2.new(1, 1)
+	hint.Position = UDim2.new(1, 6, 1, 6)
+	hint.Size = UDim2.fromOffset(24, 24)
+	hint.BackgroundTransparency = 1
+	hint.Font = Enum.Font.SourceSansBold
+	hint.Text = "▼"
+	hint.TextSize = 22
+	hint.TextColor3 = Color3.new(1, 1, 1)
+	hint.Visible = false
+	hint.Parent = box
+	TweenService:Create(hint, TweenInfo.new(0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { TextTransparency = 0.8 }):Play()
+	return hint
+end
 
 local function label(parent: Instance, text: string, size: number): TextLabel
 	local l = Instance.new("TextLabel")
@@ -53,7 +79,7 @@ local function makeCommandButton(parent: Instance, name: string, order: number):
 	local b = Instance.new("TextButton")
 	b.Name = name
 	b.LayoutOrder = order
-	b.Size = UDim2.fromOffset(150, 52)
+	b.Size = UDim2.fromOffset(130, 52)
 	b.BackgroundColor3 = BLACK
 	b.AutoButtonColor = false
 	b.Selectable = false -- BattleMenu handles keyboard/gamepad selection
@@ -62,9 +88,11 @@ local function makeCommandButton(parent: Instance, name: string, order: number):
 	b.TextSize = 26
 	b.TextColor3 = ORANGE
 	b:SetAttribute("Style", "Command")
+	b:SetAttribute("Disabled", true) -- grey until it's the player's turn
+	b.TextColor3 = GREY
 	local stroke = Instance.new("UIStroke")
 	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	stroke.Color = ORANGE
+	stroke.Color = GREY
 	stroke.Thickness = 3
 	stroke.Parent = b
 	b.Parent = parent
@@ -115,6 +143,7 @@ local function build(): Ui
 	message.TextYAlignment = Enum.TextYAlignment.Top
 	message.TextWrapped = true
 	message.Parent = box
+	local continueHint = makeContinueHint(box)
 
 	-- Option list (ACT choices, targets) in two columns inside the box.
 	local options = Instance.new("Frame")
@@ -220,21 +249,23 @@ local function build(): Ui
 	buttonRow.Parent = gui
 	local buttonLayout = Instance.new("UIListLayout")
 	buttonLayout.FillDirection = Enum.FillDirection.Horizontal
-	buttonLayout.Padding = UDim.new(0, 24)
+	buttonLayout.Padding = UDim.new(0, 16)
 	buttonLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	buttonLayout.Parent = buttonRow
 
 	local commands = {
 		makeCommandButton(buttonRow, "ATTACK", 1),
 		makeCommandButton(buttonRow, "ACT", 2),
-		makeCommandButton(buttonRow, "ALLY", 3),
+		makeCommandButton(buttonRow, "ITEM", 3),
+		makeCommandButton(buttonRow, "ALLY", 4),
 	}
-	commands[3].Visible = false
+	commands[4].Visible = false
 
 	return {
 		gui = gui,
 		box = box,
 		message = message,
+		continueHint = continueHint,
 		options = options,
 		overlay = overlay,
 		dodge = dodge,
@@ -252,8 +283,8 @@ local function getUi(): Ui
 	return ui :: Ui
 end
 
--- Visible command buttons, in order: ATTACK, ACT, then ALLY if you
--- have a team.
+-- Visible command buttons, in order: ATTACK, ACT, ITEM, then ALLY if
+-- you have a team.
 function BattleUI.commandButtons(): { TextButton }
 	local visible = {}
 	for _, b in getUi().commands do
@@ -271,13 +302,14 @@ function BattleUI.setTeam(names: { string })
 	local hasTeam = #names > 0
 	u.allyLabel.Visible = hasTeam
 	u.allyLabel.Text = if hasTeam then `& {table.concat(names, ", ")}` else ""
-	u.commands[3].Visible = hasTeam
+	u.commands[4].Visible = hasTeam
 end
 
--- Highlights a button yellow (selected) or back to its normal colour.
+-- Highlights a button yellow (selected) or back to its normal colour
+-- (grey for a disabled command button).
 function BattleUI.setHighlight(button: TextButton, on: boolean)
 	local isOption = button:GetAttribute("Style") == "Option"
-	local normal = if isOption then WHITE else ORANGE
+	local normal = if isOption then WHITE elseif button:GetAttribute("Disabled") then GREY else ORANGE
 	local color = if on then YELLOW else normal
 	button.TextColor3 = color
 	local stroke = button:FindFirstChildOfClass("UIStroke")
@@ -288,6 +320,20 @@ function BattleUI.setHighlight(button: TextButton, on: boolean)
 		local text = button:GetAttribute("Label")
 		button.Text = if on then `♥ {text}` else `* {text}`
 	end
+end
+
+-- Command buttons light up (orange) only while the player can pick one;
+-- the rest of the time they're grey and pressing them does nothing.
+function BattleUI.setCommandsEnabled(on: boolean)
+	for _, b in getUi().commands do
+		b:SetAttribute("Disabled", not on)
+		BattleUI.setHighlight(b, false)
+	end
+end
+
+-- Shows or hides the blinking "▼" (a message waiting for a confirm).
+function BattleUI.setContinueHint(on: boolean)
+	getUi().continueHint.Visible = on
 end
 
 -- Shows a message in the dialogue box (hides any option list).
@@ -334,6 +380,7 @@ function BattleUI.clearOptions()
 	u.overlay:ClearAllChildren()
 	u.options.Visible = false
 	u.message.Visible = true
+	u.continueHint.Visible = false
 end
 
 -- Shows the attack timing bar in the dialogue box. Returns the bar and the

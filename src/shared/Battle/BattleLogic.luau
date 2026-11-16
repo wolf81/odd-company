@@ -6,7 +6,7 @@
 --
 -- States, in order:
 --   PlayerTurn    -> the player picks an action (hooks.chooseAction)
---   ResolveAction -> the attack, act or ally ability happens
+--   ResolveAction -> the attack, act, item or ally ability happens
 --   CheckEnd      -> all enemies at 0 HP? -> Win
 --   EnemyTurn     -> burning enemies take damage first (ally ability),
 --                    then enemies attack (hooks.enemyTurn)
@@ -14,6 +14,7 @@
 
 local AllyTypes = require(script.Parent.Parent.Allies.AllyTypes)
 local Damage = require(script.Parent.Damage)
+local Supplies = require(script.Parent.Parent.Items.Supplies)
 local EnemyTypes = require(script.Parent.Parent.Enemies.EnemyTypes)
 
 local BattleLogic = {}
@@ -54,15 +55,18 @@ export type Battle = {
 	player: Fighter,
 	enemies: { Enemy },
 	allies: { Ally }, -- the team (empty if you're on your own)
+	items: { [string]: number }, -- supply Id -> how many you carry (used up here)
 }
 
 -- Attack: hit enemies[target]. Act: do enemies[target]'s act number `act`
 -- (1 = Check, 2.. = the enemy's own Acts). Ability: allies[ally] uses their
--- ability, aimed at enemies[target] first.
+-- ability, aimed at enemies[target] first. Item: use one supply (e.g. a
+-- Bandage) from battle.items.
 export type Action =
 	{ kind: "Attack", target: number }
 	| { kind: "Act", target: number, act: number }
 	| { kind: "Ability", target: number, ally: number }
+	| { kind: "Item", item: string }
 
 export type Hooks = {
 	-- Wait for the player to choose. Only alive enemies may be targeted.
@@ -80,13 +84,39 @@ export type Hooks = {
 	changed: (battle: Battle) -> (),
 }
 
-function BattleLogic.new(player: Fighter, enemyData: { EnemyTypes.EnemyData }, allyData: { AllyTypes.AllyData }): Battle
-	local enemies: { Enemy } = {}
+-- Display names, with A, B, ... added when the same enemy appears more
+-- than once ("Builderman A", "Builderman B"), so you can tell who's who.
+local function uniqueNames(enemyData: { EnemyTypes.EnemyData }): { string }
+	local count: { [string]: number } = {}
 	for _, data in enemyData do
+		count[data.DisplayName] = (count[data.DisplayName] or 0) + 1
+	end
+	local seen: { [string]: number } = {}
+	local names = {}
+	for i, data in enemyData do
+		local name = data.DisplayName
+		if count[name] > 1 then
+			seen[name] = (seen[name] or 0) + 1
+			name = `{name} {string.char(64 + seen[name])}` -- 65 = "A"
+		end
+		names[i] = name
+	end
+	return names
+end
+
+function BattleLogic.new(
+	player: Fighter,
+	enemyData: { EnemyTypes.EnemyData },
+	allyData: { AllyTypes.AllyData },
+	items: { [string]: number }
+): Battle
+	local enemies: { Enemy } = {}
+	local names = uniqueNames(enemyData)
+	for i, data in enemyData do
 		table.insert(enemies, {
 			id = data.Id,
 			data = data,
-			name = data.DisplayName,
+			name = names[i],
 			hp = data.Stats.HP,
 			maxHp = data.Stats.HP,
 			atk = data.Stats.ATK,
@@ -104,6 +134,7 @@ function BattleLogic.new(player: Fighter, enemyData: { EnemyTypes.EnemyData }, a
 		player = table.clone(player),
 		enemies = enemies,
 		allies = allies,
+		items = table.clone(items),
 	}
 end
 
@@ -216,7 +247,27 @@ local function applyBurns(battle: Battle, hooks: Hooks)
 	end
 end
 
+-- Uses one supply: heals the player (never above max HP).
+local function useItem(battle: Battle, hooks: Hooks, id: string)
+	local supply = Supplies[id]
+	local count = battle.items[id] or 0
+	if not supply or count <= 0 then
+		hooks.say(battle, "* You don't have that.")
+		return
+	end
+	battle.items[id] = count - 1
+	local player = battle.player
+	local healed = math.min(supply.Heal, player.maxHp - player.hp)
+	player.hp += healed
+	hooks.changed(battle)
+	hooks.say(battle, `* You used a {supply.Name}.\n* You recovered {healed} HP.`)
+end
+
 local function resolve(battle: Battle, hooks: Hooks, action: Action)
+	if action.kind == "Item" then
+		useItem(battle, hooks, action.item)
+		return
+	end
 	local enemy = battle.enemies[action.target]
 	if action.kind == "Attack" then
 		local multiplier = hooks.playerAttack(battle, action.target)
@@ -238,6 +289,20 @@ local function resolve(battle: Battle, hooks: Hooks, action: Action)
 			hooks.say(battle, if act then act.Message else "* Nothing happens.")
 		end
 	end
+end
+
+-- Gold for winning: each enemy has a chance of dropping a random amount
+-- (its Reward in the enemy data), so the total can also be 0.
+-- `random` is passed in so tests can use a fixed seed.
+function BattleLogic.goldReward(battle: Battle, random: Random): number
+	local gold = 0
+	for _, enemy in battle.enemies do
+		local reward = enemy.data.Reward
+		if random:NextNumber() < reward.GoldChance then
+			gold += random:NextInteger(reward.GoldMin, reward.GoldMax)
+		end
+	end
+	return gold
 end
 
 -- Runs the whole battle and returns "Win" or "Lose". Yields while hooks wait.

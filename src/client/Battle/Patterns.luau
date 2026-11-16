@@ -93,4 +93,60 @@ Patterns.BlockRows = {
 	end,
 }
 
+-- Bacon girl's bacon strips.
+local BACON_COLORS = {
+	Color3.fromRGB(190, 70, 55), -- meaty red
+	Color3.fromRGB(235, 175, 140), -- fatty pink
+}
+
+-- Bacon girl 1: strips fall while zig-zagging, bouncing off the box sides.
+Patterns.BaconZigzag = {
+	Duration = 5,
+	Run = function(api)
+		local s = api.size
+		local strip = Vector2.new(s * 0.16, s * 0.05)
+		while api.running() and api.elapsed() < 4.2 do
+			local goingRight = api.random:NextNumber() < 0.5
+			api.spawn({
+				position = Vector2.new(api.random:NextNumber(0.15, 0.85) * s, -strip.Y),
+				velocity = Vector2.new((if goingRight then 1 else -1) * s * 0.4, s * 0.3),
+				size = strip,
+				color = BACON_COLORS[api.random:NextInteger(1, #BACON_COLORS)],
+				update = function(b, _dt)
+					-- Bounce off the left and right sides.
+					if (b.pos.X < strip.X / 2 and b.vel.X < 0) or (b.pos.X > s - strip.X / 2 and b.vel.X > 0) then
+						b.vel = Vector2.new(-b.vel.X, b.vel.Y)
+					end
+				end,
+			})
+			api.wait(0.55)
+		end
+	end,
+}
+
+-- Bacon girl 2: strips sweep in from the sides, wiggling up and down.
+Patterns.BaconSweep = {
+	Duration = 5,
+	Run = function(api)
+		local s = api.size
+		local strip = Vector2.new(s * 0.2, s * 0.05)
+		local fromLeft = true
+		while api.running() and api.elapsed() < 4.2 do
+			local baseY = api.random:NextNumber(0.12, 0.88) * s
+			local phase = api.random:NextNumber(0, math.pi * 2)
+			api.spawn({
+				position = Vector2.new(if fromLeft then -strip.X else s + strip.X, baseY),
+				velocity = Vector2.new((if fromLeft then 1 else -1) * s * 0.45, 0),
+				size = strip,
+				color = BACON_COLORS[api.random:NextInteger(1, #BACON_COLORS)],
+				update = function(b, _dt)
+					b.pos = Vector2.new(b.pos.X, baseY + math.sin(b.age * 5 + phase) * s * 0.07)
+				end,
+			})
+			fromLeft = not fromLeft
+			api.wait(0.45)
+		end
+	end,
+}
+
 return Patterns

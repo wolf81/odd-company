@@ -1,6 +1,15 @@
 --!strict
 -- Shared type for enemy data, so every enemy file has the same shape.
 
+-- Gold you might get for beating this enemy: a GoldChance chance
+-- (0.6 = 60%) of a random amount from GoldMin to GoldMax, otherwise none.
+-- Tougher enemies give more.
+export type Reward = {
+	GoldChance: number,
+	GoldMin: number,
+	GoldMax: number,
+}
+
 export type Stats = {
 	HP: number,
 	ATK: number,
@@ -33,10 +42,11 @@ export type EnemyData = {
 	-- body colours (HeadColor, TorsoColor, ...), body part / clothing /
 	-- accessory asset IDs, scales. Any HumanoidDescription property works.
 	Avatar: { [string]: any },
-	-- Animation that loops while the enemy stands in its room (optional).
+	-- Animation that loops while the enemy stands in the world (optional).
 	IdleAnimationId: string?,
 	-- HP, ATK and DEF in battle. Damage = max(1, ATK - DEF) x timing.
 	Stats: Stats,
+	Reward: Reward,
 }
 
 return {}

@@ -1,5 +1,5 @@
 --!strict
--- All allies by Id. Rooms refer to allies by these Ids.
+-- All allies by Id. Villages refer to allies by these Ids.
 
 local AllyTypes = require(script.AllyTypes)
 

@@ -56,6 +56,9 @@ export type Pattern = {
 export type Job = {
 	owner: number,
 	pattern: Pattern,
+	-- 1 = normal. Below 1 makes this pattern's bullets slower and fewer,
+	-- so several enemies attacking at once stays fair.
+	speed: number,
 }
 
 local MOVE_KEYS: { [Enum.KeyCode]: Vector2 } = {
@@ -212,7 +215,7 @@ function DodgeBox.run(jobs: { Job }, onHit: (owner: number) -> boolean): { numbe
 				return os.clock() - startTime
 			end,
 			wait = function(seconds: number)
-				task.wait(seconds)
+				task.wait(seconds / job.speed)
 			end,
 			spawn = function(spec: BulletSpec)
 				if not running then
@@ -228,7 +231,7 @@ function DodgeBox.run(jobs: { Job }, onHit: (owner: number) -> boolean): { numbe
 				table.insert(bullets, {
 					gui = gui,
 					pos = spec.position,
-					vel = spec.velocity,
+					vel = spec.velocity * job.speed,
 					size = spec.size,
 					owner = job.owner,
 					age = 0,

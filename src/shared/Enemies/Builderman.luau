@@ -1,5 +1,6 @@
 --!strict
--- Builderman: room 1's enemy and the weakest fight (the tutorial).
+-- Builderman: blocks the bridge (and, with a friend, the forest gate), and
+-- shows up in random fights.
 -- Placeholder look from body colours only: brown skin, orange work vest,
 -- dark trousers. TODO: look up the catalog IDs for his hard hat and
 -- construction outfit once and add them to Avatar (see PLAN.md roster).
@@ -37,8 +38,11 @@ local builderman: EnemyTypes.EnemyData = {
 		RightLegColor = TROUSERS,
 	},
 	IdleAnimationId = "rbxassetid://507766388", -- Roblox's standard R15 idle
-	-- Tutorial tuning: same numbers the Noob had.
-	Stats = { HP = 20, ATK = 4, DEF = 0 },
+	-- Still the tutorial fight, but a bit tougher than the Noob was
+	-- (HP 20, ATK 4): takes ~5 normal hits, and 4 hits on you lose a fight.
+	Stats = { HP = 30, ATK = 5, DEF = 0 },
+	-- Tougher than Bacon girl, so he pays better.
+	Reward = { GoldChance = 0.75, GoldMin = 4, GoldMax = 9 },
 }
 
 return builderman

@@ -4,7 +4,8 @@
 --           arena, show the battle UI
 --   run:    BattleLogic (shared) drives the turns; the hooks below show
 --           menus and messages
---   finish: win -> the enemy disappears; lose -> back to the room's spawn;
+--   finish: win -> a fixed enemy disappears; lose -> back to the last
+--           village you visited;
 --           then fade back and give control back to the player
 
 local Players = game:GetService("Players")
@@ -12,12 +13,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local BattleLogic = require(ReplicatedStorage.Modules.Battle.BattleLogic)
+local Supplies = require(ReplicatedStorage.Modules.Items.Supplies)
 local Config = require(ReplicatedStorage.Modules.Config)
 local Damage = require(ReplicatedStorage.Modules.Battle.Damage)
 local EnemyTypes = require(ReplicatedStorage.Modules.Enemies.EnemyTypes)
 local Enemies = require(ReplicatedStorage.Modules.Enemies)
 local EncounterTrigger = require(script.Parent.EncounterTrigger)
+local Checkpoint = require(script.Parent.Checkpoint)
 local Party = require(script.Parent.Party)
+local Progress = require(script.Parent.Progress)
 local PlayerControl = require(script.Parent.PlayerControl)
 local TopDownCamera = require(script.Parent.TopDownCamera)
 local BattleArena = require(script.BattleArena)
@@ -34,7 +38,7 @@ local Battle = {}
 local active = false
 local busy = false -- true while fading in or out
 local battleThread: thread? = nil
-local currentEnemyModel: Model? = nil
+local currentEnemyModels: { Model } = {} -- fixed enemies in this fight (none in random fights)
 
 -- Hooks: how the shared battle logic shows things and asks for input.
 
@@ -82,7 +86,30 @@ local function pickAlly(battle: BattleLogic.Battle): number?
 	return BattleMenu.choose(BattleUI.showOptions(labels), 2, true)
 end
 
-local ATTACK, ACT, ALLY = 1, 2, 3 -- command button order
+local ATTACK, ACT, ITEM, ALLY = 1, 2, 3, 4 -- command button order
+
+-- ITEM: pick a supply you carry ("Bandage x2"). nil = back, or you have
+-- none (then a message says where to buy them).
+local function chooseItem(battle: BattleLogic.Battle): BattleLogic.Action?
+	local ids = {}
+	local labels = {}
+	for id, count in battle.items do
+		local supply = Supplies[id]
+		if supply and count > 0 then
+			table.insert(ids, id)
+			table.insert(labels, `{supply.Name} x{count}`)
+		end
+	end
+	if #ids == 0 then
+		BattleUI.setMessage("* You don't have any items.\n* The village shop sells bandages.")
+		BattleUI.setContinueHint(true)
+		BattleMenu.waitForConfirm()
+		BattleUI.setContinueHint(false)
+		return nil
+	end
+	local choice = BattleMenu.choose(BattleUI.showOptions(labels), 2, true)
+	return if choice then { kind = "Item", item = ids[choice] } :: BattleLogic.Action else nil
+end
 
 -- An ally's ability: pick the ally, then a target if it hits one enemy;
 -- abilities that hit several start with the first alive enemy.
@@ -97,7 +124,9 @@ local function chooseAbility(battle: BattleLogic.Battle): BattleLogic.Action?
 	if wait > 0 then
 		local turns = if wait == 1 then "1 more turn" else `{wait} more turns`
 		BattleUI.setMessage(`* {ally.data.DisplayName} needs {turns} before using {ally.data.Ability.Name} again.`)
+		BattleUI.setContinueHint(true)
 		BattleMenu.waitForConfirm()
+		BattleUI.setContinueHint(false)
 		return nil
 	end
 	local target = if ally.data.Ability.MaxTargets == 1 then pickTarget(battle) else BattleLogic.aliveEnemies(battle)[1]
@@ -111,9 +140,16 @@ local hooks: BattleLogic.Hooks = {
 			BattleUI.setMessage(flavor)
 			showTeam(battle)
 			local buttons = BattleUI.commandButtons()
+			BattleUI.setCommandsEnabled(true)
 			local command = BattleMenu.choose(buttons, #buttons, false)
+			BattleUI.setCommandsEnabled(false)
 			if command == ALLY then
 				local action = chooseAbility(battle)
+				if action then
+					return action
+				end
+			elseif command == ITEM then
+				local action = chooseItem(battle)
 				if action then
 					return action
 				end
@@ -169,22 +205,28 @@ local hooks: BattleLogic.Hooks = {
 	end,
 
 	enemyHit = function(battle, target, damage)
-		BattleArena.showHit(damage, battle.enemies[target].hp <= 0)
+		BattleArena.showHit(target, damage, battle.enemies[target].hp <= 0)
 	end,
 
 	-- Step 7: the dodge phase. Each alive enemy runs its next pattern;
 	-- only hits that land count. HP drops live as you get hit.
+	-- With several enemies, each starts at a different pattern (so two of
+	-- the same enemy don't throw the same thing), and all run a bit slower.
 	enemyTurn = function(battle)
 		local lines = {}
 		local jobs: { DodgeBox.Job } = {}
-		for _, i in BattleLogic.aliveEnemies(battle) do
+		local alive = BattleLogic.aliveEnemies(battle)
+		local speed = if #alive > 1 then Config.MultiEnemyPatternSpeed else 1
+		for position, i in alive do
 			local data = battle.enemies[i].data
-			table.insert(lines, data.AttackText)
+			if not table.find(lines, data.AttackText) then
+				table.insert(lines, data.AttackText)
+			end
 			local names = data.AttackPatterns
 			if #names > 0 then
-				local pattern = Patterns[names[(battle.turn - 1) % #names + 1]]
+				local pattern = Patterns[names[(battle.turn + position - 2) % #names + 1]]
 				if pattern then
-					table.insert(jobs, { owner = i, pattern = pattern })
+					table.insert(jobs, { owner = i, pattern = pattern, speed = speed })
 				end
 			end
 		end
@@ -205,7 +247,9 @@ local hooks: BattleLogic.Hooks = {
 
 	say = function(_battle, text)
 		BattleUI.setMessage(text)
+		BattleUI.setContinueHint(true)
 		BattleMenu.waitForConfirm()
+		BattleUI.setContinueHint(false)
 	end,
 
 	changed = function(battle)
@@ -214,6 +258,27 @@ local hooks: BattleLogic.Hooks = {
 }
 
 -- Start / finish
+
+-- Everyone who fights together with `enemyModel`: the enemies in the same
+-- folder with the same EncounterGroup, or just this one if it has none.
+-- Sorted west to east, so enemy 1 is on the left in the arena too.
+local function encounterGroup(enemyModel: Model): { Model }
+	local group = enemyModel:GetAttribute("EncounterGroup")
+	local folder = enemyModel.Parent
+	if group == nil or not folder then
+		return { enemyModel }
+	end
+	local models = {}
+	for _, other in folder:GetChildren() do
+		if other:IsA("Model") and other:GetAttribute("EncounterGroup") == group then
+			table.insert(models, other)
+		end
+	end
+	table.sort(models, function(a, b)
+		return a:GetPivot().Position.X < b:GetPivot().Position.X
+	end)
+	return models
+end
 
 local function finish(result: BattleLogic.Result?)
 	if not active then
@@ -229,20 +294,21 @@ local function finish(result: BattleLogic.Result?)
 	BattleArena.hide()
 	RunService:UnbindFromRenderStep(CAMERA_BIND)
 
-	local enemyModel = currentEnemyModel
-	if result == "Win" and enemyModel then
-		-- Gone for this session (on this client). Step 15 makes it permanent.
-		enemyModel:Destroy()
-	elseif result == "Lose" and enemyModel then
-		local room = enemyModel:FindFirstAncestorWhichIsA("Model")
-		local spawnMarker = room and room:FindFirstChild("Spawn")
-		if spawnMarker and spawnMarker:IsA("BasePart") then
-			PlayerControl.moveTo(spawnMarker.Position)
+	-- Only fixed enemies (bridge, forest gate) are in the world; random
+	-- fights have nothing to remove.
+	local fixed = currentEnemyModels
+	if result == "Win" then
+		-- Gone for this session (on this client). Saving comes later.
+		for _, model in fixed do
+			model:Destroy()
 		end
-	elseif enemyModel then
-		PlayerControl.pushAwayFrom(enemyModel:GetPivot().Position, Config.BattleExitPushback)
+	elseif result == "Lose" then
+		-- Back to the last village you visited, with full HP next fight.
+		PlayerControl.moveTo(Checkpoint.position())
+	elseif fixed[1] then
+		PlayerControl.pushAwayFrom(fixed[1]:GetPivot().Position, Config.BattleExitPushback)
 	end
-	currentEnemyModel = nil
+	currentEnemyModels = {}
 
 	PlayerControl.unfreeze()
 	TopDownCamera.start()
@@ -264,25 +330,45 @@ function Battle.isActive(): boolean
 	return active
 end
 
-function Battle.start(enemyId: string, enemyModel: Model)
-	if active or busy then
-		return
+-- "* A wild Bacon girl appears!" or "* Builderman and Bacon girl appear!"
+local function wildIntro(battle: BattleLogic.Battle): string
+	local names = {}
+	for _, enemy in battle.enemies do
+		table.insert(names, enemy.name)
 	end
-	local data = Enemies[enemyId]
-	if not data then
-		warn(`[Battle] unknown enemy "{enemyId}"`)
-		return
+	if #names == 1 then
+		return `* A wild {names[1]} appears!`
+	end
+	local last = table.remove(names) :: string
+	return `* {table.concat(names, ", ")} and {last} appear!`
+end
+
+-- Runs one battle against `models` (shown in the arena, left to right).
+-- `fixedModels` are the world's enemies to remove if you win (empty for
+-- random fights).
+local function runBattle(models: { Model }, fixedModels: { Model }, wild: boolean)
+	local enemyList: { EnemyTypes.EnemyData } = {}
+	local idleIds: { string? } = {}
+	for i, model in models do
+		local id = model:GetAttribute("EnemyId")
+		local data = if typeof(id) == "string" then Enemies[id] else nil
+		if not data then
+			warn(`[Battle] unknown enemy "{id}"`)
+			return
+		end
+		enemyList[i] = data
+		idleIds[i] = data.IdleAnimationId
 	end
 	active = true
 	busy = true
-	currentEnemyModel = enemyModel
+	currentEnemyModels = fixedModels
 	EncounterTrigger.setEnabled(false)
 	PlayerControl.freeze()
 
 	Fade.toBlack()
 
 	TopDownCamera.stop()
-	local cameraCFrame = BattleArena.show(enemyModel, data.IdleAnimationId)
+	local cameraCFrame = BattleArena.show(models, idleIds)
 	RunService:BindToRenderStep(CAMERA_BIND, Enum.RenderPriority.Camera.Value + 1, function()
 		local camera = workspace.CurrentCamera
 		camera.CameraType = Enum.CameraType.Scriptable
@@ -290,37 +376,72 @@ function Battle.start(enemyId: string, enemyModel: Model)
 		camera.CFrame = cameraCFrame
 	end)
 
-	-- Rooms 1 and 2 have one enemy; room 3 will pass two (step 14).
-	local enemyList: { EnemyTypes.EnemyData } = { data }
 	local stats = Config.PlayerStats
 	local battle = BattleLogic.new({
 		name = Players.LocalPlayer.DisplayName,
 		hp = stats.HP,
 		maxHp = stats.HP,
-		atk = stats.ATK,
+		atk = Progress.attack(), -- base ATK + your sword
 		def = stats.DEF,
-	}, enemyList, Party.allies())
+	}, enemyList, Party.allies(), Progress.items())
 
 	BattleUI.setMessage("")
+	BattleUI.setCommandsEnabled(false)
 	BattleUI.setPlayerHP(battle.player.hp, battle.player.maxHp)
 	showTeam(battle)
 	BattleUI.show()
-	print(`[{Config.GameName}] battle started: {data.DisplayName}`)
+	print(`[{Config.GameName}] battle started: {#enemyList} enemies{if wild then " (random)" else ""}`)
 	Fade.fromBlack()
 	busy = false
 
 	battleThread = coroutine.running()
+	if wild then
+		hooks.say(battle, wildIntro(battle))
+	end
 	local result: BattleLogic.Result = BattleLogic.run(battle, hooks)
+	Progress.setItems(battle.items) -- bandages used in battle are gone
 	local won = result == "Win"
 	if won then
-		hooks.say(battle, "* YOU WON!\n* You earned 0 EXP and 0 gold.")
+		local gold = BattleLogic.goldReward(battle, Random.new())
+		Progress.addGold(gold)
+		hooks.say(battle, if gold > 0 then `* YOU WON!\n* You found {gold} gold.` else "* YOU WON!\n* No gold this time.")
 	else
 		hooks.say(battle, "* You lost...\n* Stay determined! Try again.")
 	end
 	finish(if won then "Win" else "Lose")
 end
 
--- If the player respawns mid-battle, stop the battle so the room works again.
+-- Starts a battle against a fixed enemy in the world (and everyone in its
+-- encounter group). Called when the player touches it.
+-- (`_enemyId` comes from the trigger; each model carries its own EnemyId.)
+function Battle.start(_enemyId: string, enemyModel: Model)
+	if active or busy then
+		return
+	end
+	local models = encounterGroup(enemyModel)
+	runBattle(models, models, false)
+end
+
+-- Starts a random fight against these enemies (Ids), shown using the
+-- templates the server put in ReplicatedStorage.
+function Battle.startWild(enemyIds: { string })
+	if active or busy then
+		return
+	end
+	local templates = ReplicatedStorage:FindFirstChild(Config.EnemyTemplatesFolder)
+	local models = {}
+	for _, id in enemyIds do
+		local template = templates and templates:FindFirstChild(id)
+		if not template or not template:IsA("Model") then
+			warn(`[Battle] no template for enemy "{id}"`)
+			return
+		end
+		table.insert(models, template)
+	end
+	runBattle(models, {}, true)
+end
+
+-- If the player respawns mid-battle, stop the battle so the world works again.
 Players.LocalPlayer.CharacterAdded:Connect(function()
 	if active and not busy then
 		local thread = battleThread

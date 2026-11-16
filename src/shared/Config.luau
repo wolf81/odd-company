@@ -21,20 +21,33 @@ local Config = {
 	-- Undertale-style movement: walking only, no jumping.
 	AllowJumping = false,
 
-	-- Enemies: how far (studs) around an enemy touching starts a battle.
+	-- Fixed enemies (bridge, forest gate): how far (studs) around an enemy
+	-- touching starts a battle.
 	EncounterTriggerPadding = 1.5,
 	-- Seconds before the same enemy can start a battle again.
 	EncounterCooldown = 3,
 	-- CollectionService tag on the invisible box around each enemy.
 	EnemyTriggerTag = "EnemyTrigger",
+	-- ReplicatedStorage folder with one copy of each enemy, for random fights.
+	EnemyTemplatesFolder = "EnemyTemplates",
 
-	-- Village (step 10–11): where the player starts, and talking to people.
-	StartRoom = "Village",
+	-- Random fights (Pokémon-style) anywhere except roads and villages.
+	-- Every RandomEncounterStep studs you walk there, there's a
+	-- RandomEncounterChance chance of a fight (0.05 = 5%): on average a
+	-- fight every ~80 studs (about 5 seconds of walking).
+	RandomEncounterStep = 4,
+	RandomEncounterChance = 0.05,
+	-- After a fight, walk at least this far before the next one can start.
+	RandomEncounterGrace = 40,
+
+	-- Talking to people in villages.
 	-- How close (studs) you must be to see the Talk / Open prompt.
 	InteractDistance = 8,
 	-- Attributes on each ProximityPrompt say what it's for.
 	AllyPromptAttribute = "AllyId",
 	ChestPromptAttribute = "ChestItem",
+	ChestGoldAttribute = "ChestGold", -- true on loot chests (random gold)
+	ShopPromptAttribute = "ShopItems", -- comma-separated weapon Ids
 
 	-- At most this many allies in the team; to recruit another you send
 	-- one back to the village.
@@ -47,7 +60,7 @@ local Config = {
 	-- ally pops straight to you instead of walking.
 	AllyTeleportDistance = 25,
 
-	-- Battle scene: a dark arena built on the client, far from the rooms.
+	-- Battle scene: a dark arena built on the client, high above the world.
 	BattleArenaPosition = Vector3.new(0, 500, 0),
 	BattleCameraDistance = 16, -- studs in front of the enemy
 	BattleCameraFieldOfView = 45,
@@ -57,7 +70,15 @@ local Config = {
 	BattleExitPushback = 5,
 
 	-- Player stats. Damage = max(1, ATK - DEF) x timing multiplier.
-	PlayerStats = { HP = 20, ATK = 6, DEF = 0 },
+	-- ATK is low on purpose: buy a better sword in the shop (its Attack is
+	-- added), or lean on your allies' special attacks.
+	PlayerStats = { HP = 20, ATK = 4, DEF = 0 },
+	-- The sword you start with (an Id in src/shared/Items/Weapons.luau).
+	StartWeapon = "Stick",
+	-- Most of one item (e.g. bandages) you can carry.
+	MaxItemCount = 9,
+	-- Loot chests out in the world give a random amount of gold in this range.
+	LootChestGold = { Min = 5, Max = 15 },
 
 	-- Attack timing bar (step 6). The cursor crosses the bar in this many
 	-- seconds; press near the centre for more damage, too late = miss.
@@ -73,6 +94,11 @@ local Config = {
 	HeartSpeed = 0.8, -- box widths per second
 	HeartHitRadius = 6, -- pixels; smaller than the heart looks, to feel fair
 	InvincibilityTime = 1.0, -- seconds after a hit when you can't be hit again
+	-- With two or more enemies attacking at once, each pattern runs at this
+	-- speed (bullets slower and fewer), so the combined attack stays fair.
+	MultiEnemyPatternSpeed = 0.75,
+	-- Space (studs) between enemies standing side by side in the arena.
+	BattleEnemySpacing = 2,
 }
 
 return Config

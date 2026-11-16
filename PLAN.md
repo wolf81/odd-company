@@ -1,6 +1,6 @@
 # PLAN
 
-An Undertale-inspired Roblox game. The player explores as **their own Roblox avatar** and starts in a **small village**, where they can build a **team of allies** (up to 3 at once): the **Noob** (their childhood friend, joins straight away) and **Elliot** (a hungry pizza delivery guy, joins once you bring him a slice of pizza from a chest). Each ally has an unusual ability that changes how encounters play (not just more damage). Later, befriended enemies can join the party too.
+An Undertale-inspired Roblox game with a Pokémon-like world. The player explores an **open world** as **their own Roblox avatar** (random fights off the roads, some enemies blocking the way) and starts in a **small village**, where they can build a **team of allies** (up to 3 at once): the **Noob** (their childhood friend, joins straight away) and **Elliot** (a hungry pizza delivery guy, joins once you bring him a slice of pizza from a chest). Each ally has an unusual ability that changes how encounters play (not just more damage). Later, befriended enemies can join the party too.
 
 Source material lives in `design/`:
 - `design/Roblox Undertale-Style Game MVP Plan.pdf` — the original plan (Nov 1, 2026). This file summarises it.
@@ -12,10 +12,32 @@ Source material lives in `design/`:
 - [x] UI mockups drafted (A–F)
 - [ ] Built, **waiting for a Studio Play test** (Nov 15, 2026):
   - Step 8 (part): Builderman (`src/shared/Enemies/Builderman.luau`, R15, body colours only for now) replaces the Noob in room 1; block patterns re-coloured as bricks. Still to do in step 8: enemy HP bar, proper win/lose screens
-  - Step 10: village (`src/shared/Rooms/Village.luau`) south of room 1 with open doors between them; the player spawns there. `RoomBuilder` now does open doors, decorations (houses, path) and chests
+  - Step 10 (rooms since replaced by the world): village (`src/shared/Rooms/Village.luau`) south of room 1 with open doors between them; the player spawns there. `RoomBuilder` now does open doors, decorations (houses, path) and chests
   - Step 11: Talk/Open prompts (Roblox `ProximityPrompt`: E key, gamepad, tap). `src/client/Village.luau` runs recruiting and the pizza quest, `Dialogue.luau` the text box with Yes/No, `Party.luau` + `AllyFollow.luau` make the ally follow your path
   - Team (Nov 15): both allies can join; max 3 in the team (`Config.MaxTeamSize`). Recruiting a 4th asks who goes back to the village (they return to their spot and can be recruited again). Allies walk in a line behind you
   - Step 12: one ALLY command button opens a list of the team's abilities (COLA / PIZZA, with turns left while cooling down; skipped with one ally), `& Noob, Elliot` in the HUD; ability and burn logic in `BattleLogic`, numbers in `src/shared/Allies/`
+- [ ] Built, **waiting for a Studio Play test** (Nov 15, 2026, second batch):
+  - Builderman tougher: HP 30, ATK 5
+  - Two-enemy battle pulled forward from step 14 (rooms since replaced by the world): `src/shared/Rooms/Room2.luau` (north of room 1) has **two Buildermans** (placeholders) in one encounter `Group`; touching either starts one battle against both ("Builderman A/B", side by side in the arena, different patterns at 0.75 speed). Room 1's north door opens once Builderman is beaten (`OpensWhenCleared`, the step 13 door rule)
+  - Turn clarity: command buttons are grey unless you can pick one; a blinking ▼ shows when a message waits for a confirm (battle and village)
+  - Village prettier, still plain Parts: materials (grass, cobblestone, brick, slate, wood), cottages with doors/windows/stepped roofs/chimneys, trees, bushes, flower beds, glowing lamp posts, a well, a village square
+- [ ] Built, **waiting for a Studio Play test** (Nov 15, 2026, third batch): **rooms replaced by an open world** (the nephew's wish)
+  - `src/shared/World/`: map in `init.luau`, villages `StartVillage.luau` + `Hamlet.luau`, prop helpers `Props.luau`, area questions `Areas.luau`; built by `src/server/WorldBuilder.luau` with **Terrain** (grass, dirt roads, water, rock) plus Parts (houses, trees, bridge, fences)
+  - 320 × 400 studs: start village (south) → road north → river with one bridge (**Builderman** blocks it) → meadows with a side road to the **Hamlet** (second village) → rocky ridge with one gap (**two Buildermans** guard it) → pine forest (north)
+  - Borders: cliffs north, low cliffs south (so the camera never loses you), **sea with a beach** east, **thick forest** west; invisible walls on every edge and along the river banks
+  - **Random fights** anywhere except roads and villages (`src/client/RandomEncounters.luau`; `Config.RandomEncounter*`: 5% per 4 studs, 40-stud grace after a fight). Pools in `World.DefaultPool` / `World.Zones` (the forest has more pairs). "* A wild Bacon girl appears!"
+  - **Bacon girl** added as a wild enemy (body colours only for now; patterns BaconZigzag, BaconSweep)
+  - Losing sends you back to the **last village you visited** (`src/client/Checkpoint.luau`)
+  - Removed: `src/shared/Rooms/`, `RoomBuilder`, doors that open when a room is cleared
+- [ ] Built, **waiting for a Studio Play test** (Nov 15, 2026, fourth batch): **gold and a sword shop**
+  - Damage retuned: player ATK 6 → 4; COLA 3 → 5 per enemy, PIZZA 5 → 8 (and 8 burn)
+  - Winning gives **gold** by chance: each enemy's `Reward` (GoldChance, GoldMin–GoldMax) in its data file; Builderman 75% of 4–9, Bacon girl 60% of 1–5. Can be 0 ("No gold this time.")
+  - **Market stall** in the start village (`Props.stall`, sign + prompt in `WorldBuilder`) sells swords from `src/shared/Items/Weapons.luau`: **Iron sword**, ATK +3, 25 gold. You start with a Stick (+0)
+  - **Bandages** (`src/shared/Items/Supplies.luau`): 6 gold, heal 8 HP, carry up to 9; also sold at the stall. New **ITEM** battle button (ATTACK, ACT, ITEM, ALLY); using one takes your turn. HP still resets to full at each fight start (decided Nov 15)
+  - **Loot chests** with 5–15 random gold at four spots off the roads (`World.LootChests`), same chest look
+  - Gold, sword and bandages in `src/client/Progress.luau` (this session only, no saving); top-right HUD shows them (`src/client/Hud.luau`)
+  - Ground fix: everything is stood on the measured terrain surface (`src/shared/World/Ground.luau`), after waiting for new terrain to be hittable
+  - Chest restyled: plank body, metal bands, gold lock, stepped lid that swings open
 - [x] Starting village with two allies (Noob, Elliot) added to the MVP (Nov 15, 2026). Steps renumbered: village and allies 10–12, rooms 2/3 now 13–14, full run 15
 - [ ] Open questions answered (see bottom)
 - [x] Step 0 tooling: Rokit, Rojo 7.7.1, Studio plugin, `default.project.json`, git repo
@@ -33,20 +55,22 @@ Source material lives in `design/`:
 
 ## MVP scope
 
-**Done when:** a tester can start in the village, recruit an ally, walk through all three rooms, win or lose each fight, and reach the end of room 3 without any explanation.
+**Done when:** a tester can start in the village, recruit allies, cross the world (random fights on the way), beat the bridge and forest-gate fights, and reach the forest without any explanation.
 
-**In:** a starting village where you build a team of up to 3 allies, three connected rooms, one player, and battles with menu, attack, dodge phase, HP, win and lose:
+**In:** one open world (see the map in `src/shared/World/init.luau`), one player, and battles with menu, attack, dodge phase, HP, win and lose:
 
-| Room | Enemies | Purpose |
-|------|---------|---------|
-| Village | none: two possible allies (**Noob**, **Elliot**) and a chest with pizza | Start of the game. Talk to people and recruit allies (Noob straight away, Elliot after the pizza quest). Both can join |
-| 1 | 1 enemy: **Builderman** | Learn the basics: menu, timing bar, dodging, and your ally's ability |
-| 2 | 1 stronger enemy: **Bacon girl** (assumed) | Same rules, harder: more HP/ATK/DEF and a new attack pattern |
-| 3 | 2 enemies (one battle): **Headless Horseman + Korblox Deathspeaker** | Choosing a target, and dodging two enemies' attacks at once |
+| Place | Enemies | Purpose |
+|-------|---------|---------|
+| Start village | none: two possible allies (**Noob**, **Elliot**) and a chest with pizza | Start of the game. Talk to people and recruit allies (Noob straight away, Elliot after the pizza quest). Safe: no random fights |
+| Meadows (south of the river) | random: **Builderman**, **Bacon girl** | Learn the basics: menu, timing bar, dodging, your allies' abilities |
+| Bridge | fixed: **Builderman** blocks it | The only way north: a fight you can't skip |
+| Hamlet (east, side road) | none | A second safe village; losing after you've visited it restarts you here |
+| Ridge gap (forest gate) | fixed: **two Buildermans** in one battle | Choosing a target, and dodging two enemies' attacks at once |
+| Forest (north) | random, harder: mostly pairs | The end of the MVP world |
 
-**Out for now:** recruiting enemies after a fight, saving, an inventory (the pizza is a single quest flag, not an item system), NPCs beyond the two allies, branching dialogue, more rooms than the village + three, multiplayer, final art. Rooms use placeholder Parts; the player is always their own avatar; enemies and allies are classic Roblox avatars (see the rosters below).
+**Also in:** gold from fights and loot chests, and a shop that sells a better sword and bandages (used in battle).
 
-The core battle is built and tuned in room 1 first (steps 0–9). Then the village and allies (steps 10–12), then rooms 2 and 3, once that fight is fun.
+**Out for now:** experience and levels, recruiting enemies after a fight, saving, an inventory beyond your sword (the pizza is a single quest flag), NPCs beyond the two allies, branching dialogue, running from fights, multiplayer, final art. The ground is Roblox Terrain and props are plain Parts; the player is always their own avatar; enemies and allies are classic Roblox avatars (see the rosters below).
 
 ## Build steps
 
@@ -64,12 +88,12 @@ Work top to bottom. Each step ends in something testable. Recommended option fir
 | 7 | Enemy attack phase | Heart in a box dodging projectiles drawn as UI frames · same in 3D Parts | One pattern works, then two more; hits deal damage and grant brief invincibility |
 | 8 | Stats and damage | `damage = max(1, ATK - DEF) * timingMultiplier` · rules from the earlier combat chat. Also swap room 1's enemy: **Builderman** (tutorial tuning: low HP/ATK) replaces the Noob, who becomes an ally; his patterns start as the current block patterns, re-themed as bricks | HP bars, win and lose screens, return to the room; Builderman is the room 1 fight |
 | 9 | Playtest and tune | Watch the nephew play; tune bullet speed, HP, timing window; swap in their art | They can finish a fight and say what to change |
-| 10 | Village | A new start room south of room 1 (`src/shared/Rooms/Village.luau`): a few placeholder houses, a path and a door north into room 1, open from the start. The player now spawns in the village. Place the Noob, Elliot and a chest as interactables | You spawn in the village, can walk around it with an R6 and an R15 avatar, and walk through the door into room 1 |
-| 11 | Recruit allies | Walk up to someone or something → `!` prompt (layout D) and a TALK button / `E` (layouts E, F). A short dialogue box, no branching beyond yes/no. **Noob:** "It's me, your old friend! Can I come?" → Yes = joins. **Elliot:** "I'm sooo hungry..." until you open the chest (you get a *Pizza slice*), then "Pizza! I'll come with you!" → Yes = joins. The team holds at most 3; recruiting a 4th asks who goes back to the village. Allies follow the player in a line (simple scripted follow, anchored rig, no player movement) · allies only appear in battle | You can recruit the Noob and (after the pizza quest) Elliot; both follow you into room 1 |
-| 12 | Ally in battle | The ally shows in the HUD next to `YOU` (layout A, small portrait + name) and adds one menu option with their ability (see Allies below). Ability logic lives in the ally's data module and plugs into `BattleLogic` hooks, no UI calls | Each ally's ability visibly changes how the room 1 fight plays; the fight is still winnable without it |
-| 13 | Room 2: stronger enemy | Add a door from room 1 to room 2 that opens once room 1's enemy is beaten. The second enemy reuses the battle system with its own stats table (more HP/ATK/DEF) and one new attack pattern | You can walk from room 1 into room 2, and the second fight is noticeably harder but still winnable |
-| 14 | Room 3: two enemies | The battle takes a list of enemies instead of one. Add target selection to the Attack/Act menu; on the enemy turn both enemies attack in the same dodge phase (patterns combined, slightly slower each). The battle is won when both are at 0 HP | Room 3 starts one battle with both enemies, you can pick who to hit, and beating one leaves the other fighting |
-| 15 | Full run | Beaten enemies stay gone for the session, and doors stay open. Losing restarts you at the entrance of the current room with full HP and your ally. Reaching the end of room 3 shows a simple "The End" screen | A tester plays from the village to the end screen without help, once with each ally; tune the difficulty curve across the three fights |
+| 10 | Village | Start village with houses and a gate; the player spawns there. Place the Noob, Elliot and a chest as interactables | You spawn in the village and can walk around it with an R6 and an R15 avatar |
+| 11 | Recruit allies | Walk up to someone or something → `!` prompt (layout D) and a TALK button / `E` (layouts E, F). A short dialogue box, no branching beyond yes/no. **Noob:** "It's me, your old friend! Can I come?" → Yes = joins. **Elliot:** "I'm sooo hungry..." until you open the chest (you get a *Pizza slice*), then "Pizza! I'll come with you!" → Yes = joins. The team holds at most 3; recruiting a 4th asks who goes back to the village. Allies follow the player in a line (simple scripted follow, anchored rig, no player movement) · allies only appear in battle | You can recruit the Noob and (after the pizza quest) Elliot; both follow you out of the village |
+| 12 | Ally in battle | The team shows in the HUD next to `YOU` (layout A) and one ALLY menu option lists their abilities (see Allies below). Ability logic lives in the ally's data module and plugs into `BattleLogic` hooks, no UI calls | Each ally's ability visibly changes how a fight plays; fights are still winnable without them |
+| 13 | Open world | Replace the rooms with one world built from code (Terrain + Parts): villages, roads, river + bridge, ridge + gap, forest; borders of cliffs, sea and forest with invisible walls. Fixed enemies block the bridge and the gap | You can walk from the start village to the forest, can't leave the map or swim the river, and must beat the bridge fight to cross |
+| 14 | Random fights and two-enemy battles | Random fights anywhere except roads and villages, picked from weighted pools per zone; wild enemies shown from templates. Battles take a list of enemies: target selection, both attack in one dodge phase (each pattern at 0.75 speed). Losing restarts you at the last village visited | Random fights happen at a pace that feels fun, not annoying; the forest gate is one battle against two Buildermans |
+| 15 | Full run | Beaten fixed enemies stay gone for the session. Reaching the forest shows a simple "The End" screen | A tester plays from the village to the end screen without help, once with each ally; tune encounter rate and difficulty |
 
 ## UI
 
@@ -97,12 +121,12 @@ Enemies are well-known Roblox avatars, built in code from a `HumanoidDescription
 | Enemy | Look | Where | Attack pattern idea (dodge phase) |
 |-------|------|-------|-----------------------------------|
 | **Builderman** | Hard hat, construction outfit | Room 1 (weakest) | Slow, wobbly bricks falling from the top (teaches dodging); bricks building walls across the box with one gap to slip through; a "build" sweep from the side |
-| **Headless Horseman** | Headless Horseman bundle | Room 3 (with Korblox) | Flying pumpkins that bounce off the box edges |
-| **Korblox Deathspeaker** | Korblox Deathspeaker bundle (skeletal leg, crown) | Room 3 (with Headless) | Bone spears thrust in from the sides on a rhythm |
-| **Bacon girl** | Default-style avatar with the bacon hair | Room 2 (stronger, assumed) | Bacon strips zig-zagging across the box |
+| **Headless Horseman** | Headless Horseman bundle | Later: forest gate guard (with Korblox)? | Flying pumpkins that bounce off the box edges |
+| **Korblox Deathspeaker** | Korblox Deathspeaker bundle (skeletal leg, crown) | Later: forest gate guard (with Headless)? | Bone spears thrust in from the sides on a rhythm |
+| **Bacon girl** | Default-style avatar with the bacon hair (hair asset ID still to look up) | Random fights everywhere | Bacon strips zig-zagging and bouncing (BaconZigzag), wiggling strips sweeping in from the sides (BaconSweep) |
 | **Shadow master** | Black ninja outfit | Later (Party slice / World) | Shuriken that fly straight, then curve toward the heart |
 
-Room 3 pairs the two "rare" avatars as the final fight. Shadow master waits for the next phase; he's a good candidate for a recruitable enemy later, e.g. making the heart briefly invisible to bullets.
+The two "rare" avatars could replace the Buildermans at the forest gate as the big fight. Shadow master waits for the next phase; he's a good candidate for a recruitable enemy later, e.g. making the heart briefly invisible to bullets.
 
 ## Allies
 
@@ -140,12 +164,13 @@ Don't start a phase until the previous gate is met.
 - [ ] Combat format: menu + dodging (assumed), real-time action, or hybrid?
 - [ ] Share the nephew's drawings so enemy, room and companion designs start from their ideas.
 - [ ] Confirm UI layout for the MVP (A + D assumed).
-- [ ] Room 3: one battle against both enemies (assumed), or two separate battles in the same room?
 - [ ] Enemy order: Noob → Builderman → Headless Horseman + Korblox (assumed). Swap any of them with Bacon girl or Shadow master?
-- [ ] Do doors stay locked until the room's enemy is beaten (assumed), or can players walk past?
-- [x] ~~Who is room 1's enemy?~~ **Builderman** moves to room 1; the Noob is now an ally in the village.
+- [x] ~~Who is the first enemy?~~ **Builderman**; the Noob is now an ally in the village.
 - [x] ~~How many allies, and how do you get them?~~ Two in the village: the **Noob** (childhood friend, joins freely) and **Elliot** (pizza delivery guy, needs a pizza slice from a chest). Both can join: a **team of up to 3**; to recruit more, send one back to the village. One ALLY button in battle.
-- [ ] Room 2's enemy now that Builderman moved to room 1: **Bacon girl** (assumed), Shadow master, or someone else?
+- [x] ~~Rooms or open world?~~ **Open world** with villages, random fights off the roads (Pokémon-like) and fixed enemies blocking passages; borders of cliffs, sea and forest.
+- [ ] Which enemies guard the bridge and the forest gate in the end (Headless Horseman + Korblox for the gate, as planned)? Names for the villages, the river and the forest?
+- [ ] Running away from random fights (a RUN button, like Pokémon)?
+- [ ] More things in the shop (better swords, healing items, armour)? Prices? Experience/levels were dropped for now (Nov 15).
 - [x] ~~Ally abilities?~~ Noob: **Shaken cola**, explodes and damages up to 2 enemies. Elliot: **Hot pizza**, hurts one enemy for 2 rounds, cooldown 3 rounds.
 - [ ] Noob's cola: really no cooldown (assumed, "at any time"), and how much damage compared to a normal attack? Does using an ability replace the player's attack that turn (assumed)?
 - [ ] Village: other villagers, or just the two allies and the chest (assumed)? Does it have a name?
